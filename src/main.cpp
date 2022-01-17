@@ -9,55 +9,25 @@
 #include <ESPAsyncWebServer.h>
 #include <WebSerial.h>
 
-#include "config.h" /*
-
-  Software serial multple serial test
-
- Receives from the hardware serial, sends to software serial.
- Receives from software serial, sends to hardware serial.
-
- The circuit:
- * RX is digital pin 10 (connect to TX of other device)
- * TX is digital pin 11 (connect to RX of other device)
-
- Note:
- Not all pins on the Mega and Mega 2560 support change interrupts,
- so only the following can be used for RX:
- 10, 11, 12, 13, 50, 51, 52, 53, 62, 63, 64, 65, 66, 67, 68, 69
-
- Not all pins on the Leonardo and Micro support change interrupts,
- so only the following can be used for RX:
- 8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
-
- created back in the mists of time
- modified 25 May 2012
- by Tom Igoe
- based on Mikal Hart's example
-
- This example code is in the public domain.
-
- */
+#include "config.h"
+#include "SIM800.h"
 
 AsyncWebServer server(80);
+
+Sim800 sim800;
 
 // Surveille les entrée du WebSerial
 void recvMsg(uint8_t *data, size_t len)
 {
   WebSerial.println("Send AT command...");
-//  char t[] = { (char)72};
- // WebSerial.print(t);
- // WebSerial.print(String ((char)68));
- /* WebSerial.print((char 76);
-  WebSerial.print((char*)76);
-  WebSerial.println((char*)79);
-*/
+
   bool sms = false;
   String d = "";
   for (int i = 0; i < len; i++)
   {
     if (char(data[i]) == '&')
     {
-      WebSerial.println("Send SMS");
+      WebSerial.println("Detect Ctrl+Z");
       sms = true;
       break;
     }
@@ -67,12 +37,10 @@ void recvMsg(uint8_t *data, size_t len)
 
   if (sms)
   {
-    Serial1.print(d);
-    Serial1.write((char)26);
-    Serial1.println();
+    sim800.atCommand(d, endAt::endMark);
   }
   else
-    Serial1.println(d);
+    sim800.atCommand(d, endAt::returnCarriage);
 }
 
 void setup()
@@ -136,7 +104,8 @@ void setup()
                          type = "filesystem";
 
                        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-                       Serial.println("Start updating " + type); });
+                       Serial.println("Start updating " + type);
+                     });
   ArduinoOTA.onEnd([]()
                    { Serial.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
@@ -153,7 +122,8 @@ void setup()
                        else if (error == OTA_RECEIVE_ERROR)
                          Serial.println("Receive Failed");
                        else if (error == OTA_END_ERROR)
-                         Serial.println("End Failed"); });
+                         Serial.println("End Failed");
+                     });
   ArduinoOTA.begin();
 
   //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
@@ -161,6 +131,9 @@ void setup()
   WebSerial.begin(&server);
   WebSerial.msgCallback(recvMsg);
   server.begin();
+
+  //=========== Initialialisation du module SIM800 ==========
+  sim800.begin(SIM800_UART_BAUDRATE, SIM800_TX_PIN, SIM800_RX_PIN);
 }
 
 void loop()
@@ -170,16 +143,19 @@ void loop()
   ArduinoOTA.handle();
 
   // Surveillance des entrée series
-
+  /*
   if (Serial1.available())
   {
     char c = Serial1.read();
     Serial.write(c);
-    WebSerial.print(String ((char)c));
+    WebSerial.print(String((char)c));
   }
-
+*/
   if (Serial.available())
   {
     Serial1.write(Serial.read());
   }
+
+  // Runtime du module SIM800
+  sim800.run();
 }
