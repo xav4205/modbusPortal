@@ -7,15 +7,17 @@
 #define SIM800_UART_BAUDRATE 19200
 
 /*=======Main config===========*/
-#define WEBSERIAL 0
+#define WATCHDOG_TIMER 1800000
 
 /*===== Wifi Settings ======*/
 
-#define WIFI_SSID "Wifi Metha"
-#define WIFI_PASSWORD "biogaz85"
+//#define WIFI_SSID "Wifi Metha"
+//#define WIFI_PASSWORD "biogaz85"
+#define WIFI_SSID "Reseau Xavier"
+#define WIFI_PASSWORD "xmzbr85310"
 #define WIFI_LOCAL_IP \
   {                   \
-    192, 168, 85, 222 \
+    192, 168, 14, 222 \
   }
 #define WIFI_SUBNET  \
   {                  \
@@ -27,7 +29,7 @@
   }
 #define WIFI_GATEWAY \
   {                  \
-    192, 168, 85, 1  \
+    192, 168, 14, 1  \
   }
 
 /*===== Modbus Register Map ======*/

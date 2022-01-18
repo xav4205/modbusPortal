@@ -8,7 +8,6 @@ Sim800::Sim800()
 {
 
   _sender = "";
-  _bodySms = "";
   _isConnected = false;
   _operator = "";
   _isReady = false;
@@ -51,6 +50,7 @@ void Sim800::begin(int baudRate, int txPin, int rxPin)
   {
 
     WebSerial.println("Communication établie avec le module SIM800");
+    WebSerial.println("===========================================");
     WebSerial.println("Initialisation");
     Serial1.flush();
 
@@ -126,7 +126,7 @@ void Sim800::sendToLastSender(const String &text)
  * @brief Lit le sms stocké en mémoire
  *
  * @param SmsStorePos Position du message à lire dans la mémoire
- * @return Texte du dernier message
+ * @return Texte du message
  */
 String Sim800::readSms(const String SmsStorePos)
 {
@@ -140,7 +140,7 @@ String Sim800::readSms(const String SmsStorePos)
   // Extraction de l'expediteur
 
   String firstLine = _reply[1];
-  if (firstLine.indexOf("+CMGR:") >= 0)
+  if (firstLine.startsWith("+CMGR:"))
   {
 
     int cPos = firstLine.indexOf(',');
@@ -152,15 +152,17 @@ String Sim800::readSms(const String SmsStorePos)
 
   // Extraction du texte du sms
 
-  _bodySms = _reply[2];
+  String text = _reply[2];
 
   WebSerial.println("============ MESSAGE ===============");
 
-  WebSerial.println(_bodySms);
+  WebSerial.println(text);
 
   WebSerial.println("=========================");
 
-  return _bodySms;
+  deleteSms();
+
+  return text;
 }
 
 /**
@@ -231,37 +233,43 @@ void Sim800::sendEndMark(void)
 bool Sim800::read(String at)
 {
   bool echo = false;
-  int nbOfLines = 0;
+  int idxLine = 0;
   bool spontaneousMessage = at.length() <= 0;
 
-  while (Serial1.available() && nbOfLines < MAX_NB_REPLY)
+  String oneLine = ""; // Stocke les message recus ligne par ligne
+
+  while (Serial1.available() > 0 && idxLine < MAX_NB_REPLY)
   {
 
-    String message = "";
+    char c = (char)Serial1.read();
 
-    while (Serial1.available())
+    if (c != (char)10 && c != (char)13) // Elimine les LF et CR
     {
-      char c = (char) Serial1.read();
-      if (c != (char)10) // Elimine les line feed
-        message += c;
-      if (c != (char)13) 
-        break;
+      oneLine = oneLine + c;
+      /*
+      Serial.print(c);
+      Serial.print('(');
+      Serial.print(c, DEC);
+      Serial.print(")");
+      */
     }
-    // read the incoming byte:
 
-    String debug = "====> Message SIM800>>ESP32 (";
+    delay(10);
 
-    at.trim();
-    debug += spontaneousMessage ? "spontané) =>  " : "suite à [" + at + "]) =>";
-
-    if (message.length() > 1)
+    if (c == (char)13 && oneLine.length() > 1) // Detection d'un caractere de fin de ligne
     {
-      message.trim();
-      WebSerial.print(debug + message);
 
-      _reply[nbOfLines] = message;
+      String debug = "====> Message SIM800>>ESP32 (";
 
-      if (nbOfLines == 0 && !spontaneousMessage && at == message)
+      at.trim();
+      oneLine.trim();
+      debug += spontaneousMessage ? "spontané) =>  " : "suite à [" + at + "]) =>";
+
+      WebSerial.print(debug + oneLine);
+
+      _reply[idxLine] = oneLine; // Mise en mémoire dans un tableau de lignes
+
+      if (idxLine == 0 && !spontaneousMessage && at == oneLine)
       {
         WebSerial.println("\t=> ECHO VALIDE");
         echo = true;
@@ -271,22 +279,19 @@ bool Sim800::read(String at)
 
       _messageProcess = spontaneousMessage;
 
-      nbOfLines++;
+      idxLine++;
+      oneLine.clear();
     }
-
-    delay(500);
   }
 
-  // Efface la fin du buffer de reception
-  for (int j = nbOfLines; j < MAX_NB_REPLY; j++)
+  // Efface la fin du tampon de reception
+  for (int j = idxLine; j < MAX_NB_REPLY; j++)
   {
     _reply[j] = "";
   }
 
-  // WebSerial.print("Nombre de lignes lues : ");
-  // WebSerial.println(i);
-
-  process();
+  if (_messageProcess)
+    process();
 
   return echo;
 }
@@ -333,10 +338,6 @@ int Sim800::requestSignalQuality()
     if (header.startsWith("+CSQ"))
     {
       level = extractBetween(header, ": ", ",").toInt();
-
-      s = "Niveau du signal : ";
-      s += level;
-      WebSerial.println(s);
     }
   }
 
@@ -349,6 +350,10 @@ int Sim800::requestSignalQuality()
     bar = 3;
   if (level > 19)
     bar = 4;
+
+  WebSerial.print("Niveau du signal : ");
+  WebSerial.print(bar);
+  WebSerial.println(" barrettes");
 
   return bar;
 }
@@ -416,7 +421,7 @@ void Sim800::sendPinCode()
       }
       else if (atCommand(pin, endAt::returnCarriage))
       {
-        String newFirstLine = _reply[1]; // Extrait la premier trame apres l'echo
+        String newFirstLine = _reply[1]; // Suite à une nouvelle commande AT, il faut relire la réponse
         if (newFirstLine.startsWith("+CPIN"))
         {
           if (String(_reply[2]).indexOf("OK") > 0)
@@ -424,32 +429,13 @@ void Sim800::sendPinCode()
             WebSerial.println("Code Pin accepte");
           }
           else
-            WebSerial.println("Mauvais Code Pin");
+            WebSerial.println("Mauvais Code Pin ou carte sim absente");
         }
       }
     }
   }
   return;
 }
-
-/*
-String Sim800::surveySpontaneousCommand()
-{
-  // surveille les messages spontanes et le stocke en tampon dans _message Renvoie True si un nouveau message est detecte
-  String message = "";
-  message = read();
-  boolean isEmpty = message.length() < 1;
-
-  if (!isEmpty)
-  {
-    WebSerial.println("======= MESSAGE SPONTANE ========");
-    WebSerial.println();
-    WebSerial.println(message);
-  }
-
-  return message;
-}
-*/
 
 boolean Sim800::isReady()
 {
@@ -465,18 +451,23 @@ String Sim800::extractBetween(String s, String a, String b)
 
 /**
  * @brief  Boucle principale :
- * - surveille les message spontanés
+ * - surveille les messages spontanés
  *
  */
 void Sim800::run()
 {
   if (Serial1.available() > 0)
   {
-    WebSerial.println("*");
+    Serial.println("Message spontané");
+    delay(500);
     read();
   }
 }
 
+/**
+ * @brief Dispatche les actions à effectuer selon le message reçu.
+ * 
+ */
 void Sim800::process()
 {
 
@@ -486,16 +477,13 @@ void Sim800::process()
     {
       WebSerial.println("Processing of message ...");
       WebSerial.println("--------------------------------------------------------------");
-    }
-
-    for (int i = 0; i < MAX_NB_REPLY; i++)
-    {
-      if (DEBUG_RESPONSE)
+      for (int i = 0; i < MAX_NB_REPLY; i++)
+      {
         WebSerial.println("|\t" + String(i, DEC) + "\t|\t" + _reply[i]);
-      //_reply[i] = "";
-    }
-    if (DEBUG_RESPONSE)
+        //_reply[i] = "";
+      }
       WebSerial.println("--------------------------------------------------------------");
+    }
 
     String header = _reply[0];
 
@@ -506,7 +494,32 @@ void Sim800::process()
       WebSerial.print("SMS stocke en position ");
       WebSerial.println(position);
 
-      readSms(position);
+      String text = readSms(position);
+
+      //Dispatch des actions
+
+      if (text.indexOf("OK") >= 0 || text.indexOf("Ok") >= 0)
+      {
+        WebSerial.println("#### ACTION 1 ####");
+      }
+      else if (text.indexOf("TEST") >= 0)
+      {
+        WebSerial.println("#### ACTION 2 ####");
+      }
+      else if (text.indexOf("ON") >= 0)
+      {
+        WebSerial.println("#### ACTION 3 ####");
+      }
+      else if (text.indexOf("OFF") >= 0)
+      {
+        WebSerial.println("#### ACTION 4 ####");
+      }
+      else if (text.indexOf("HI") >= 0)
+      {
+        WebSerial.println("#### ACTION 5 ####");
+      }
+      else
+        WebSerial.println("#### NO ACTION ####");
     }
 
     _messageProcess = false;

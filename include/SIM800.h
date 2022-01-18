@@ -48,8 +48,8 @@ private:
   String _operator;
   bool _messageProcess;
   String _reply[MAX_NB_REPLY];
-  String _bodySms;
   String _sender;
+  
 
   void setTextModeSMS();
   void sendPinCode();

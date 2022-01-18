@@ -22,7 +22,7 @@ void recvMsg(uint8_t *data, size_t len)
   WebSerial.println("Send AT command...");
 
   bool sms = false;
-  String d = "";
+  String str = "";
   for (int i = 0; i < len; i++)
   {
     if (char(data[i]) == '&')
@@ -32,15 +32,13 @@ void recvMsg(uint8_t *data, size_t len)
       break;
     }
 
-    d += char(data[i]);
+    str += char(data[i]);
   }
 
   if (sms)
-  {
-    sim800.atCommand(d, endAt::endMark);
-  }
+    sim800.atCommand(str, endAt::endMark);
   else
-    sim800.atCommand(d, endAt::returnCarriage);
+    sim800.atCommand(str, endAt::returnCarriage);
 }
 
 void setup()
@@ -56,9 +54,7 @@ void setup()
   Serial.print('[' + (String)__FILE__ + "::" + __func__ + "/" + __LINE__ + "] \t");
   Serial.println("===UART initialized===");
 
-  //===Init sim800==
-  // Open serial communications and wait for port to open:
-  Serial1.begin(19200, SERIAL_8N1, 26, 25);
+ 
 
   //=========== Initialialisation de la station Wifi ==========
 
@@ -70,6 +66,7 @@ void setup()
 
   // Configure et demarre la station Wifi
   Serial.println("Booting");
+
   WiFi.mode(WIFI_STA);
   WiFi.config(ip, gateway, subnet, dns);
   delay(200);
@@ -142,19 +139,15 @@ void loop()
   // Runtime du serveur OTA
   ArduinoOTA.handle();
 
-  // Surveillance des entrée series
-  /*
-  if (Serial1.available())
+  // Fonction cyclique
+  static unsigned long watchDog = millis();
+  if (millis() - watchDog > WATCHDOG_TIMER)
   {
-    char c = Serial1.read();
-    Serial.write(c);
-    WebSerial.print(String((char)c));
+    watchDog = millis();
+    Serial.print("Alive !");
+    Serial.println(millis());
   }
-*/
-  if (Serial.available())
-  {
-    Serial1.write(Serial.read());
-  }
+
 
   // Runtime du module SIM800
   sim800.run();
