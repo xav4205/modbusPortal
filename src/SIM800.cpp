@@ -79,7 +79,7 @@ void Sim800::test(boolean reset)
 
   if (_sim800WatchdogTimer + GPRS_WATCHDOG < millis() || reset)
   {
-    //gprs->atCommand("AT");
+    // gprs->atCommand("AT");
     WebSerial.println("GPRS WATCHDOG");
     if (atCommand("AT", endAt::returnCarriage) != 1)
     {
@@ -93,7 +93,7 @@ void Sim800::test(boolean reset)
 
 /**
  * @brief Envoie un sms
- * 
+ *
  * @param recipient Numero du destinataire
  * @param text Corps du message
  */
@@ -114,7 +114,7 @@ void Sim800::sendSms(const String &recipient, const String &text)
 
 /**
  * @brief Returne un message au dernier expediteur de message
- * 
+ *
  * @param text Corps du message
  */
 void Sim800::sendToLastSender(const String &text)
@@ -124,9 +124,9 @@ void Sim800::sendToLastSender(const String &text)
 
 /**
  * @brief Lit le sms stocké en mémoire
- * 
+ *
  * @param SmsStorePos Position du message à lire dans la mémoire
- * @return Texte du dernier message 
+ * @return Texte du dernier message
  */
 String Sim800::readSms(const String SmsStorePos)
 {
@@ -164,11 +164,11 @@ String Sim800::readSms(const String SmsStorePos)
 }
 
 /**
-* @brief Envoi la commande AT au module, renvoie ok si le module repond bien (echo valide)
-* @param at Commande AT
-* @param end Defini si la commande AT doit finir par 'Enter' ou 'Ctrl+Z'
-* @return Echo valide
-*/
+ * @brief Envoi la commande AT au module, renvoie ok si le module repond bien (echo valide)
+ * @param at Commande AT
+ * @param end Defini si la commande AT doit finir par 'Enter' ou 'Ctrl+Z'
+ * @return Echo valide
+ */
 bool Sim800::atCommand(const String at, endAt end)
 {
   unsigned long atTimeOut = millis();
@@ -214,7 +214,7 @@ bool Sim800::atCommand(const String at, endAt end)
 
 /**
  * @brief Envoie le caractére de fin spécial pour validation du texte d'un SMS
- * 
+ *
  */
 void Sim800::sendEndMark(void)
 {
@@ -224,7 +224,7 @@ void Sim800::sendEndMark(void)
 
 /**
  * @brief Lie le port série du module Sim800
- * 
+ *
  * @param at (optionnel) Commande AT à comparer à la réponse
  * @return Réponse identique au paramètre at
  */
@@ -232,19 +232,20 @@ bool Sim800::read(String at)
 {
   bool echo = false;
   int nbOfLines = 0;
+  bool spontaneousMessage = at.length() <= 0;
 
   while (Serial1.available() && nbOfLines < MAX_NB_REPLY)
   {
 
     String message = "";
-    bool spontaneousMessage = at.length() <= 0;
 
-    char c = ' ';
-    while (Serial1.available() && c != '\r')
+    while (Serial1.available())
     {
-      c = Serial1.read();
+      char c = (char) Serial1.read();
       if (c != (char)10) // Elimine les line feed
         message += c;
+      if (c != (char)13) 
+        break;
     }
     // read the incoming byte:
 
@@ -253,7 +254,7 @@ bool Sim800::read(String at)
     at.trim();
     debug += spontaneousMessage ? "spontané) =>  " : "suite à [" + at + "]) =>";
 
-    if (message.length() > 0)
+    if (message.length() > 1)
     {
       message.trim();
       WebSerial.print(debug + message);
@@ -292,7 +293,7 @@ bool Sim800::read(String at)
 
 /**
  * @brief Efface les sms stockés en mémoire
- * 
+ *
  */
 void Sim800::deleteSms()
 {
@@ -303,7 +304,7 @@ void Sim800::deleteSms()
 
 /**
  * @brief Permet au module de recevoir et d'envoyer des sms
- * 
+ *
  */
 void Sim800::setTextModeSMS()
 {
@@ -314,8 +315,8 @@ void Sim800::setTextModeSMS()
 
 /**
  * @brief Demande de niveau de signal
- * 
- * @return niveau de reception (0 à 4 "barrettes") 
+ *
+ * @return niveau de reception (0 à 4 "barrettes")
  */
 int Sim800::requestSignalQuality()
 {
@@ -354,8 +355,8 @@ int Sim800::requestSignalQuality()
 
 /**
  * @brief Verifie si le module est attaché au réseau
- * 
- * @return int 
+ *
+ * @return int
  */
 bool Sim800::requestNetworkRegistration()
 {
@@ -380,7 +381,7 @@ bool Sim800::requestNetworkRegistration()
 
 /**
  * @brief Parametre le module pour qu'il renvoie la commande AT
- * 
+ *
  * @param activate ON/OFF
  */
 void Sim800::setEchoMode(bool activate)
@@ -395,7 +396,7 @@ void Sim800::setEchoMode(bool activate)
 
 /**
  * @brief Parametre le code PIN à 0000
- * 
+ *
  */
 void Sim800::sendPinCode()
 {
@@ -465,7 +466,7 @@ String Sim800::extractBetween(String s, String a, String b)
 /**
  * @brief  Boucle principale :
  * - surveille les message spontanés
- * 
+ *
  */
 void Sim800::run()
 {
