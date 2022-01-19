@@ -198,6 +198,8 @@ bool Sim800::atCommand(const String at, endAt end)
     {
       bool echo = read(at);
 
+      delay(100);
+
       if (echo)
         isOk = true;
 
