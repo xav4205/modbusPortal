@@ -1,0 +1,386 @@
+#include <Arduino.h>
+#include "ModbusSlave.h"
+#include "ModbusServerWiFi.h"
+#include "config.h"
+
+//#define SERVER_ID 1;
+const uint8_t SERVER_ID(1);
+
+ModbusSlave::ModbusSlave()
+{
+  _messageWorker = [](const String &recipient, const String &text) {}; // Enregistrement d'une fonction vide
+}
+
+MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE])
+{
+
+  std ::function<ModbusMessage(ModbusMessage)> f03 = [reg](ModbusMessage request) -> ModbusMessage
+  {
+    uint16_t addr = MODBUS_HOLDING_REGISTER_SIZE; // Start address to read
+    uint16_t wrds = 0;                            // Number of words to read
+    ModbusMessage response;
+
+    // Get addr and words from data array. Values are MSB-first, get() will convert to binary
+    request.get(2, addr);
+    request.get(4, wrds);
+
+    addr++;
+
+    if (addr > MODBUS_HOLDING_REGISTER_SIZE)
+    {
+      // No. Return error response
+      Serial.println("Adresse non valide");
+      response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+      return response;
+    }
+
+    Serial.print("Demande de lecture de ");
+    Serial.print(wrds);
+    Serial.print(" mots à partir de l'adresse ");
+    Serial.println(addr);
+
+    // Modbus address is 1..n, memory address 0..n-1
+    addr--;
+    // address valid?
+    // Number of words valid?
+    if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
+    {
+      // No. Return error response
+      Serial.println("Adresse non valide (depassement)");
+      response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+      return response;
+    }
+
+    // Prepare response
+    response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(wrds * 2));
+
+    Serial.println("---------");
+    // Loop over all words to be sent
+    for (uint16_t i = 0; i < wrds; i++)
+    {
+      uint16_t val = reg[addr + i];
+      // Add word MSB-first to response buffer
+      Serial.print(addr + 400001 + i);
+      Serial.print(" -> ");
+      Serial.println(val);
+
+      response.add(val);
+    }
+    Serial.println("---------");
+
+    // Return the data response
+    return response;
+  };
+
+  return f03;
+};
+
+MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE])
+{
+
+  std ::function<ModbusMessage(ModbusMessage)> f10 = [reg](ModbusMessage request) -> ModbusMessage
+  {
+    uint16_t addr = MODBUS_HOLDING_REGISTER_SIZE + 1; // Start address to read
+    uint16_t wrds = 0;                                // Number of words to read
+    uint8_t bytesCount = 0;
+    std::vector<uint16_t> values;
+    ModbusMessage response;
+
+    // Get addr and words from data array. Values are MSB-first, get() will convert to binary
+    request.get(2, addr);
+    request.get(4, wrds);
+    request.get(6, bytesCount);
+
+    for (uint8_t i = 0; i < bytesCount; i += 2)
+    {
+      uint16_t val;
+      request.get(7 + i, val);
+      values.push_back(val);
+    }
+
+    // request.get(8, values, bytesCount);
+
+    addr++;
+
+    if (addr > MODBUS_HOLDING_REGISTER_SIZE)
+    {
+      // No. Return error response
+      Serial.println("Adresse non valide");
+      response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+      return response;
+    }
+
+    Serial.print("Demande d'ecriture de ");
+    Serial.print(wrds);
+    Serial.print(" mots à partir de l'adresse ");
+    Serial.print(addr);
+    Serial.print(" (");
+    Serial.print(bytesCount);
+    Serial.println(" bytes)");
+
+    // Modbus address is 1..n, memory address 0..n-1
+    addr--;
+    // address valid?
+    // Number of words valid?
+    if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
+    {
+      // No. Return error response
+      Serial.println("Adresse non valide (depassement)");
+      response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
+      return response;
+    }
+
+    // Prepare response
+    // response.add(request.getServerID(), request.getFunctionCode());
+
+    Serial.println("++++++++++");
+    // Loop over all words to be sent
+    for (uint16_t i = 0; i < wrds; i++)
+    {
+      uint16_t val = reg[addr + i];
+      // Add word MSB-first to response buffer
+      Serial.print(addr + 1 + i);
+      Serial.print(" <- ");
+      Serial.print(values[i]);
+      Serial.print(" (");
+      Serial.print(val);
+      Serial.println(")");
+
+      reg[addr + i] = values[i];
+    }
+
+    Serial.println("++++++++");
+
+    response = ECHO_RESPONSE;
+    //  response.add(request.getServerID(), request.getFunctionCode(), addr+1, wrds);
+    // Return the data response
+    return response;
+  };
+
+  return f10;
+};
+
+
+void ModbusSlave::init()
+{
+
+  // Enregistre la fonction qui sera executée en cas de demande de lecture du registre d'exploitation (fonction 03)
+  _MBserver.registerWorker(SERVER_ID, READ_HOLD_REGISTER, readHoldingRegister(_holdingRegister));
+
+// Enregistre la fonction qui sera executée en cas de demande de lecture du registre d'exploitation (fonction 16)
+  _MBserver.registerWorker(SERVER_ID, WRITE_MULT_REGISTERS, writeHoldingRegister(_holdingRegister));
+
+  clearHoldingRegister();
+
+  // Demarre le serveur Modbus TCP/IP:
+  // Port 502, maximum de 4 clients en parallèle, 10 seconds de timeout
+  _MBserver.start(502, 4, 10000);
+  return;
+}
+
+/**
+ * @brief Routine
+ * - Surveille le nombre de clients
+ * - Va chercher les info du wifi
+ * - Déclenche l'execution de l afonction d'envoi sur le registre new message passe à 1
+ * 
+ */
+void ModbusSlave::run()
+{
+  static unsigned long watchDog = millis();
+
+  if (millis() - watchDog > MODBUS_SERVER_WATCHDOG)
+  {
+    Serial.print(_MBserver.activeClients());
+    Serial.println(" clients running.");
+
+    getWifiInfo();
+    printHoldingRegisterInfo();
+
+    watchDog = millis();
+  }
+
+  if (getHoldingRegister(MODMAP_NEW_MESSAGE)){
+    newMessageReceived();
+  }
+
+}
+
+/**
+ * @brief Vide le registre d'execution
+ * 
+ */
+void ModbusSlave::clearHoldingRegister()
+{
+  // Initialize server memory with consecutive values
+  for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; ++i)
+  {
+    _holdingRegister[i] = 0;
+  }
+}
+
+/**
+ * @brief Préleve les infos du Wifi et les stocke dans le registre d'éxecution
+ * 
+ */
+void ModbusSlave::getWifiInfo()
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    Serial.print("[*] Network information for ");
+    Serial.println(WIFI_SSID);
+
+    Serial.println("[+] BSSID : " + WiFi.BSSIDstr());
+    Serial.print("[+] Gateway IP : ");
+    Serial.println(WiFi.gatewayIP());
+    Serial.print("[+] Subnet Mask : ");
+    Serial.println(WiFi.subnetMask());
+    Serial.println((String) "[+] RSSI : " + WiFi.RSSI() + " dB");
+    Serial.print("[+] ESP32 IP : ");
+    Serial.println(WiFi.localIP());
+
+    setHoldingRegister(MODMAP_WIFI_SIGNAL_LEVEL, -WiFi.RSSI());
+  }
+  setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
+}
+
+/**
+ * @brief Affiche les valeurs du registre sur le port série
+ * 
+ */
+void ModbusSlave::printHoldingRegisterInfo()
+{
+  Serial.println("==========");
+
+  for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; i++)
+  {
+    // Add word MSB-first to response buffer
+    Serial.print(400001 + i);
+    Serial.print(" -> ");
+    Serial.println(_holdingRegister[i]);
+  }
+  Serial.println("==========");
+}
+
+/**
+ * @brief Enregistre une fonction à executer lorsque qu'un message est reçu. 
+ * 
+ * Si cette fonction est appelée plusieurs fois, seule la dernière fonction est enregistrée.
+ * @param callback Pointeur sur la fonction à exectuer
+ * Celle-ci doit etre de type (String destinataire, String text)
+ * 
+ */
+void ModbusSlave::registerMessageWorker(MessageCb callback)
+{
+  _messageWorker = callback;
+}
+
+/**
+ * @brief Execute la fonction enregistrée grace à registerMessageWorker
+ * en prélevant le numero et le texte dans le registre d'éxecution
+ * 
+ */
+
+void ModbusSlave::newMessageReceived()
+{
+
+  _messageWorker(
+      toString(MODMAP_FIRST_PHONE_NUMBER_REGISTER, MODMAP_PHONE_NUMBER_SIZE_MESSAGE),
+      toString(MODMAP_FIRST_MESSAGE_REGISTER, MODMAP_MAX_SIZE_MESSAGE));
+
+  setHoldingRegister(MODMAP_NEW_MESSAGE, false);
+  clearMessage();
+}
+
+
+/**
+ * @brief Ecrit une valeur dans un registre
+ * 
+ * @param idx Index du registre à ecrire
+ */
+void ModbusSlave::setHoldingRegister(uint16_t idx, uint16_t value)
+{
+  // DebugSerial.printf("Set HRegister [%d] <- %d\n", idx, value);
+  if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
+    _holdingRegister[idx - 1] = value;
+
+  return;
+}
+
+/**
+ * @brief Lie la valeur stockée dans un registre
+ * 
+ * @param idx Index du registre à lire
+ * @return Valeur extraite du registre 
+ */
+uint16_t ModbusSlave::getHoldingRegister(uint16_t idx)
+{
+  if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
+    return _holdingRegister[idx - 1];
+
+  return 0;
+}
+
+/**
+ * @brief Efface le message du registre correspondant
+ * 
+ */
+void ModbusSlave::clearMessage()
+{
+  for (uint8_t i = MODMAP_FIRST_MESSAGE_REGISTER; i < MODMAP_FIRST_MESSAGE_REGISTER + MODMAP_MAX_SIZE_MESSAGE; i++)
+  {
+    setHoldingRegister(i, 0);
+  }
+
+  return;
+}
+
+/**
+ * @brief Traduit les octets stockés en modbus en texte
+ * 
+ * @param firstRegister Index du premier registre à lire
+ * @param size Nombre de registre à lire
+ * @return Texte extrait du registre 
+ */
+String ModbusSlave::toString(int firstRegister, int size)
+{
+  char msg[size] = {0};
+
+  for (int i = 0; i < size / 2; i++)
+  {
+    const int16_t value = getHoldingRegister(i + firstRegister);
+
+    uint8_t lastByte = (value & 0xFF);         // extract first byte
+    uint8_t firstByte = ((value >> 8) & 0xFF); // extract second byte
+
+    Serial.print('[');
+    Serial.print(firstByte, HEX);
+    Serial.print('/');
+    Serial.print(lastByte, HEX);
+    Serial.println(']');
+    if (firstByte)
+      msg[i * 2] = firstByte;
+    else
+      break;
+
+    if (lastByte)
+      msg[i * 2 + 1] = lastByte;
+    else
+      break;
+  }
+  /*
+    for (int i = 0; i < size; i++)
+    {
+      if (msg[i])
+      {
+        DebugSerial.write(msg[i]);
+        DebugSerial.print('(');
+        DebugSerial.print(msg[i]);
+        DebugSerial.print(')');
+      }
+      else
+        break;
+    }
+  */
+  return (String)msg;
+}

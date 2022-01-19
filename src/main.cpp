@@ -11,10 +11,14 @@
 
 #include "config.h"
 #include "SIM800.h"
+#include "ModbusSlave.h"
+#include "ModbusServerWiFi.h"
 
 AsyncWebServer server(80);
 
 Sim800 sim800;
+
+ModbusSlave modbus;
 
 // Surveille les entrée du WebSerial
 void recvMsg(uint8_t *data, size_t len)
@@ -53,8 +57,6 @@ void setup()
 
   Serial.print('[' + (String)__FILE__ + "::" + __func__ + "/" + __LINE__ + "] \t");
   Serial.println("===UART initialized===");
-
- 
 
   //=========== Initialialisation de la station Wifi ==========
 
@@ -131,12 +133,17 @@ void setup()
 
   //=========== Initialialisation du module SIM800 ==========
   sim800.begin(SIM800_UART_BAUDRATE, SIM800_TX_PIN, SIM800_RX_PIN);
+
+  //=========== Initialialisation du serveur Modbus ==========
+  modbus.init();
+  modbus.registerMessageWorker([](const String &sender, const String &text)
+                               { sim800.sendSms(sender, text); });
 }
 
 void loop()
 {
 
-  // Runtime du serveur OTA
+  // Routine du serveur OTA
   ArduinoOTA.handle();
 
   // Fonction cyclique
@@ -148,7 +155,9 @@ void loop()
     Serial.println(millis());
   }
 
+  // Routine du serveur Modbus
+  modbus.run();
 
-  // Runtime du module SIM800
+  // Routine du module SIM800
   sim800.run();
 }

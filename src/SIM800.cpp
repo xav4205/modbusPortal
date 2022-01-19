@@ -501,6 +501,7 @@ void Sim800::process()
       if (text.indexOf("OK") >= 0 || text.indexOf("Ok") >= 0)
       {
         WebSerial.println("#### ACTION 1 ####");
+        sendToLastSender("Action 1");
       }
       else if (text.indexOf("TEST") >= 0)
       {

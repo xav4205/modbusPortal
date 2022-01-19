@@ -32,11 +32,17 @@
     192, 168, 14, 1  \
   }
 
+
+/*===== Modbus Server Settings ======*/
+
+#define MODBUS_SERVER_WATCHDOG 60000
+#define MODBUS_HOLDING_REGISTER_SIZE 128
+
 /*===== Modbus Register Map ======*/
 
-#define MODMAP_NEW_MESSAGE 1
+#define MODMAP_NEW_MESSAGE 1 // Il y a un message à envoyer
 #define MODMAP_NB_MESSAGE_QUEUE 2
-#define MODMAP_IN_PROGRESS 3
+#define MODMAP_IN_PROGRESS 3 // Etat de l'envoi
 #define MODMAP_WIFI_STATUS 4
 #define MODMAP_WIFI_SIGNAL_LEVEL 5
 #define MODMAP_GPRS_ATTACH 6
