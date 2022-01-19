@@ -169,6 +169,8 @@ void loop()
 
   if (Serial.available())
   {
+    delay(500);
+    
     while (Serial.available()) // Vide le tampon du port serie
     {
       Serial.read();
