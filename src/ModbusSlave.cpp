@@ -180,9 +180,8 @@ void ModbusSlave::init()
 
 /**
  * @brief Routine
- * - Surveille le nombre de clients
  * - Va chercher les info du wifi
- * - Déclenche l'execution de l afonction d'envoi sur le registre new message passe à 1
+ * - Déclenche l'execution de la fonction d'envoi quand le jeton "new message" passe à 1
  * 
  */
 void ModbusSlave::run()
@@ -191,12 +190,7 @@ void ModbusSlave::run()
 
   if (millis() - watchDog > MODBUS_SERVER_WATCHDOG)
   {
-    Serial.print(_MBserver.activeClients());
-    Serial.println(" clients running.");
-
-    getWifiInfo();
-    printHoldingRegisterInfo();
-
+  
     watchDog = millis();
   }
 
@@ -204,6 +198,17 @@ void ModbusSlave::run()
     newMessageReceived();
   }
 
+}
+
+/**
+ * @brief Affidche les statistique du serveur Modbus sur le port serie
+ * 
+ */
+void ModbusSlave::printStats()
+{
+
+    Serial.print(_MBserver.activeClients());
+    Serial.println(" clients running.");
 }
 
 /**
@@ -219,30 +224,6 @@ void ModbusSlave::clearHoldingRegister()
   }
 }
 
-/**
- * @brief Préleve les infos du Wifi et les stocke dans le registre d'éxecution
- * 
- */
-void ModbusSlave::getWifiInfo()
-{
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.print("[*] Network information for ");
-    Serial.println(WIFI_SSID);
-
-    Serial.println("[+] BSSID : " + WiFi.BSSIDstr());
-    Serial.print("[+] Gateway IP : ");
-    Serial.println(WiFi.gatewayIP());
-    Serial.print("[+] Subnet Mask : ");
-    Serial.println(WiFi.subnetMask());
-    Serial.println((String) "[+] RSSI : " + WiFi.RSSI() + " dB");
-    Serial.print("[+] ESP32 IP : ");
-    Serial.println(WiFi.localIP());
-
-    setHoldingRegister(MODMAP_WIFI_SIGNAL_LEVEL, -WiFi.RSSI());
-  }
-  setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
-}
 
 /**
  * @brief Affiche les valeurs du registre sur le port série
@@ -336,7 +317,7 @@ void ModbusSlave::clearMessage()
 }
 
 /**
- * @brief Traduit les octets stockés en modbus en texte
+ * @brief Convertit les octets stockés en modbus en texte
  * 
  * @param firstRegister Index du premier registre à lire
  * @param size Nombre de registre à lire

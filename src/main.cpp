@@ -55,9 +55,6 @@ void setup()
     ;
   }
 
-  Serial.print('[' + (String)__FILE__ + "::" + __func__ + "/" + __LINE__ + "] \t");
-  Serial.println("===UART initialized===");
-
   //=========== Initialialisation de la station Wifi ==========
 
   // Initialise les IP selon le fichier config.h
@@ -103,8 +100,7 @@ void setup()
                          type = "filesystem";
 
                        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-                       Serial.println("Start updating " + type);
-                     });
+                       Serial.println("Start updating " + type); });
   ArduinoOTA.onEnd([]()
                    { Serial.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
@@ -121,8 +117,7 @@ void setup()
                        else if (error == OTA_RECEIVE_ERROR)
                          Serial.println("Receive Failed");
                        else if (error == OTA_END_ERROR)
-                         Serial.println("End Failed");
-                     });
+                         Serial.println("End Failed"); });
   ArduinoOTA.begin();
 
   //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
@@ -137,7 +132,12 @@ void setup()
   //=========== Initialialisation du serveur Modbus ==========
   modbus.init();
   modbus.registerMessageWorker([](const String &sender, const String &text)
-                               { sim800.sendSms(sender, text); });
+                               {    Serial.println("Envoi d'un message");
+                               Serial.print("Destinataire => ");
+            Serial.println(sender);
+              Serial.print("Message => ");
+          Serial.println(text); });
+  //{ sim800.sendSms(sender, text); });
 }
 
 void loop()
@@ -147,12 +147,51 @@ void loop()
   ArduinoOTA.handle();
 
   // Fonction cyclique
+  // Lie les stats du module SIM800 et les integrent au registre Modbus correspondant
+  // Préleve les infos du Wifi et les stocke dans le registre d'éxecution
   static unsigned long watchDog = millis();
   if (millis() - watchDog > WATCHDOG_TIMER)
   {
     watchDog = millis();
-    Serial.print("Alive !");
     Serial.println(millis());
+
+    // == WIFI ==
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      modbus.setHoldingRegister(MODMAP_WIFI_SIGNAL_LEVEL, -WiFi.RSSI());
+    }
+    modbus.setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
+    
+    // == GSM ==
+    modbus.setHoldingRegister(MODMAP_GPRS_SIGNAL_LEVEL, sim800.requestSignalQuality());
+    modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
+  }
+
+  if (Serial.available())
+  {
+    while (Serial.available()) // Vide le tampon du port serie
+    {
+      Serial.read();
+    }
+    if (WiFi.status() == WL_CONNECTED)
+    {
+      Serial.print("[*] Network information for ");
+      Serial.println(WIFI_SSID);
+
+      Serial.println("[+] BSSID : " + WiFi.BSSIDstr());
+      Serial.print("[+] Gateway IP : ");
+      Serial.println(WiFi.gatewayIP());
+      Serial.print("[+] Subnet Mask : ");
+      Serial.println(WiFi.subnetMask());
+      Serial.println((String) "[+] RSSI : " + WiFi.RSSI() + " dB");
+      Serial.print("[+] ESP32 IP : ");
+      Serial.println(WiFi.localIP());
+    }
+    else
+      Serial.println("Wifi non connecté");
+
+    modbus.printStats();
+    modbus.printHoldingRegisterInfo();
   }
 
   // Routine du serveur Modbus

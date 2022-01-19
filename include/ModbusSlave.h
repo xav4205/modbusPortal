@@ -16,10 +16,11 @@ public:
   void init();
 
   void registerMessageWorker(MessageCb callback);
-  void getWifiInfo();
   void setHoldingRegister(uint16_t idx, uint16_t value);
   uint16_t getHoldingRegister(uint16_t idx);
   void printHoldingRegisterInfo();
+  void printStats();
+
 
 private:
   // Set up a Modbus server
