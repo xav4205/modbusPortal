@@ -86,7 +86,6 @@ void setup()
   IPAddress localIP = WiFi.localIP();
   Serial.printf("Addresse IP locale: %u.%u.%u.%u\n", localIP[0], localIP[1], localIP[2], localIP[3]);
 
-  
   //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
 
   WebSerial.begin(&server);
@@ -107,26 +106,32 @@ void setup()
                          type = "filesystem";
 
                        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-                       Serial.println("Start updating " + type); });
+                       WebSerial.println("Start updating " + type);
+                     });
   ArduinoOTA.onEnd([]()
-                   { Serial.println("\nEnd"); });
+                   { WebSerial.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
-                        { Serial.printf("Progress: %u%%\r", (progress / (total / 100))); });
+                        {
+                          WebSerial.print("Progress: ");
+                          WebSerial.println((progress / (total / 100)));
+                        });
   ArduinoOTA.onError([](ota_error_t error)
                      {
-                       Serial.printf("Error[%u]: ", error);
+                       WebSerial.print("Error[");
+                       WebSerial.print(error);
+                       WebSerial.print("]: ");
                        if (error == OTA_AUTH_ERROR)
-                         Serial.println("Auth Failed");
+                         WebSerial.println("Auth Failed");
                        else if (error == OTA_BEGIN_ERROR)
-                         Serial.println("Begin Failed");
+                         WebSerial.println("Begin Failed");
                        else if (error == OTA_CONNECT_ERROR)
-                         Serial.println("Connect Failed");
+                         WebSerial.println("Connect Failed");
                        else if (error == OTA_RECEIVE_ERROR)
-                         Serial.println("Receive Failed");
+                         WebSerial.println("Receive Failed");
                        else if (error == OTA_END_ERROR)
-                         Serial.println("End Failed"); });
+                         WebSerial.println("End Failed");
+                     });
   ArduinoOTA.begin();
-
 
   //=========== Initialialisation du module SIM800 ==========
   sim800.begin(SIM800_UART_BAUDRATE, SIM800_TX_PIN, SIM800_RX_PIN);
