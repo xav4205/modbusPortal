@@ -142,12 +142,12 @@ void setup()
   modbus.registerMessageWorker(
       [](const String &recipient, const String &text)
       {
-        Serial.println("Envoi d'un message");
-        Serial.print("Destinataire => ");
-        Serial.println(recipient);
-        Serial.print("Message => ");
-        Serial.println(recipient);
-        sim800.sendSms(recipient, text);
+        WebSerial.println("Envoi d'un message");
+        WebSerial.print("Destinataire => ");
+        WebSerial.println(recipient);
+        WebSerial.print("Message => ");
+        WebSerial.println(recipient);
+        //sim800.sendSms(recipient, text);
       });
 }
 
@@ -164,7 +164,6 @@ void loop()
   if (millis() - watchDog > WATCHDOG_TIMER)
   {
     watchDog = millis();
-    Serial.println(millis());
 
     // == WIFI ==
     if (WiFi.status() == WL_CONNECTED)

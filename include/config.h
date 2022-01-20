@@ -7,7 +7,7 @@
 #define SIM800_UART_BAUDRATE 19200
 
 /*=======Main config===========*/
-#define WATCHDOG_TIMER 1800000
+#define WATCHDOG_TIMER 30000
 
 /*===== Wifi Settings ======*/
 
@@ -32,7 +32,6 @@
     192, 168, 14, 1  \
   }
 
-
 /*===== Modbus Server Settings ======*/
 
 #define MODBUS_SERVER_WATCHDOG 60000
@@ -41,7 +40,7 @@
 /*===== Modbus Register Map ======*/
 
 #define MODMAP_NEW_MESSAGE 1 // Il y a un message à envoyer
-#define MODMAP_NB_MESSAGE_QUEUE 2
+#define MODMAP_LIVE_WORD 2
 #define MODMAP_IN_PROGRESS 3 // Etat de l'envoi
 #define MODMAP_WIFI_STATUS 4
 #define MODMAP_WIFI_SIGNAL_LEVEL 5
