@@ -177,6 +177,20 @@ void loop()
     modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
   }
 
+  static unsigned long liveWordTimer = millis();
+  static unsigned long liveWordTimerOffset = millis();
+  if (millis() - liveWordTimer > 1000)
+  {
+    liveWordTimer = millis();
+
+    unsigned int liveWord = (liveWordTimer - liveWordTimerOffset)/1000;
+
+    if (liveWord >= 65535)
+      liveWordTimerOffset = millis();
+
+    modbus.setHoldingRegister(MODMAP_LIVE_WORD, liveWord);
+  }
+
   if (Serial.available())
   {
     delay(500);

@@ -39,13 +39,13 @@
 
 /*===== Modbus Register Map ======*/
 
-#define MODMAP_NEW_MESSAGE 1 // Il y a un message à envoyer
-#define MODMAP_LIVE_WORD 2
-#define MODMAP_IN_PROGRESS 3 // Etat de l'envoi
-#define MODMAP_WIFI_STATUS 4
-#define MODMAP_WIFI_SIGNAL_LEVEL 5
-#define MODMAP_GPRS_ATTACH 6
-#define MODMAP_GPRS_SIGNAL_LEVEL 7
+#define MODMAP_LIVE_WORD 1
+#define MODMAP_SEND_STATE 2 // Etat de l'envoi
+#define MODMAP_WIFI_STATUS 3
+#define MODMAP_WIFI_SIGNAL_LEVEL 4
+#define MODMAP_GPRS_ATTACH 5
+#define MODMAP_GPRS_SIGNAL_LEVEL 6
+#define MODMAP_NEW_MESSAGE 64 // Il y a un message à envoyer
 #define MODMAP_FIRST_PHONE_NUMBER_REGISTER 65
 #define MODMAP_PHONE_NUMBER_SIZE_MESSAGE 10
 #define MODMAP_FIRST_MESSAGE_REGISTER 70
