@@ -103,10 +103,14 @@ void Sim800::sendSms(const String &recipient, const String &text)
   WebSerial.println(recipient);
   WebSerial.println(text);
 
+
+  if(recipient.length()>=10 && text.length()>0){
+
   String header = "AT+CMGS=\"" + (recipient) + ("\"");
 
   atCommand(header, endAt::returnCarriage);
   atCommand(text, endAt::endMark);
+  }else WebSerial.println("Parametre pour le sms non valide");
 
   delay(5000);
   read();

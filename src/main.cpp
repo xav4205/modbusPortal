@@ -86,6 +86,13 @@ void setup()
   IPAddress localIP = WiFi.localIP();
   Serial.printf("Addresse IP locale: %u.%u.%u.%u\n", localIP[0], localIP[1], localIP[2], localIP[3]);
 
+  
+  //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
+
+  WebSerial.begin(&server);
+  WebSerial.msgCallback(recvMsg);
+  server.begin();
+
   //=========== Initialialisation du serveur OTA (upload firmware par le Wifi) ==========
 
   // Port defaults to 3232
@@ -120,24 +127,23 @@ void setup()
                          Serial.println("End Failed"); });
   ArduinoOTA.begin();
 
-  //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
-
-  WebSerial.begin(&server);
-  WebSerial.msgCallback(recvMsg);
-  server.begin();
 
   //=========== Initialialisation du module SIM800 ==========
   sim800.begin(SIM800_UART_BAUDRATE, SIM800_TX_PIN, SIM800_RX_PIN);
 
   //=========== Initialialisation du serveur Modbus ==========
   modbus.init();
-  modbus.registerMessageWorker([](const String &sender, const String &text)
-                               {    Serial.println("Envoi d'un message");
-                               Serial.print("Destinataire => ");
-            Serial.println(sender);
-              Serial.print("Message => ");
-          Serial.println(text); });
-  //{ sim800.sendSms(sender, text); });
+  // Enregistrement de la fonction d'envoi
+  modbus.registerMessageWorker(
+      [](const String &recipient, const String &text)
+      {
+        Serial.println("Envoi d'un message");
+        Serial.print("Destinataire => ");
+        Serial.println(recipient);
+        Serial.print("Message => ");
+        Serial.println(recipient);
+        sim800.sendSms(recipient, text);
+      });
 }
 
 void loop()
@@ -161,7 +167,7 @@ void loop()
       modbus.setHoldingRegister(MODMAP_WIFI_SIGNAL_LEVEL, -WiFi.RSSI());
     }
     modbus.setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
-    
+
     // == GSM ==
     modbus.setHoldingRegister(MODMAP_GPRS_SIGNAL_LEVEL, sim800.requestSignalQuality());
     modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
@@ -170,7 +176,7 @@ void loop()
   if (Serial.available())
   {
     delay(500);
-    
+
     while (Serial.available()) // Vide le tampon du port serie
     {
       Serial.read();
