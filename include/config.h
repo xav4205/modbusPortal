@@ -11,13 +11,13 @@
 
 /*===== Wifi Settings ======*/
 
-//#define WIFI_SSID "Wifi Metha"
-//#define WIFI_PASSWORD "biogaz85"
-#define WIFI_SSID "Reseau Xavier"
-#define WIFI_PASSWORD "xmzbr85310"
+#define WIFI_SSID "Wifi Metha"
+#define WIFI_PASSWORD "biogaz85"
+//#define WIFI_SSID "Reseau Xavier"
+//#define WIFI_PASSWORD "xmzbr85310"
 #define WIFI_LOCAL_IP \
   {                   \
-    192, 168, 14, 222 \
+    192, 168, 85, 222 \
   }
 #define WIFI_SUBNET  \
   {                  \
