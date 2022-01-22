@@ -160,14 +160,13 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
   return f10;
 };
 
-
 void ModbusSlave::init()
 {
 
   // Enregistre la fonction qui sera executée en cas de demande de lecture du registre d'exploitation (fonction 03)
   _MBserver.registerWorker(SERVER_ID, READ_HOLD_REGISTER, readHoldingRegister(_holdingRegister));
 
-// Enregistre la fonction qui sera executée en cas de demande de lecture du registre d'exploitation (fonction 16)
+  // Enregistre la fonction qui sera executée en cas de demande de lecture du registre d'exploitation (fonction 16)
   _MBserver.registerWorker(SERVER_ID, WRITE_MULT_REGISTERS, writeHoldingRegister(_holdingRegister));
 
   clearHoldingRegister();
@@ -190,14 +189,14 @@ void ModbusSlave::run()
 
   if (millis() - watchDog > MODBUS_SERVER_WATCHDOG)
   {
-  
+
     watchDog = millis();
   }
 
-  if (getHoldingRegister(MODMAP_NEW_MESSAGE)){
+  if (getHoldingRegister(MODMAP_SEND_MESSAGE))
+  {
     newMessageReceived();
   }
-
 }
 
 /**
@@ -207,8 +206,8 @@ void ModbusSlave::run()
 void ModbusSlave::printStats()
 {
 
-    Serial.print(_MBserver.activeClients());
-    Serial.println(" clients running.");
+  Serial.print(_MBserver.activeClients());
+  Serial.println(" clients running.");
 }
 
 /**
@@ -223,7 +222,6 @@ void ModbusSlave::clearHoldingRegister()
     _holdingRegister[i] = 0;
   }
 }
-
 
 /**
  * @brief Affiche les valeurs du registre sur le port série
@@ -269,10 +267,9 @@ void ModbusSlave::newMessageReceived()
       toString(MODMAP_FIRST_PHONE_NUMBER_REGISTER, MODMAP_PHONE_NUMBER_SIZE_MESSAGE),
       toString(MODMAP_FIRST_MESSAGE_REGISTER, MODMAP_MAX_SIZE_MESSAGE));
 
-  setHoldingRegister(MODMAP_NEW_MESSAGE, false);
+  setHoldingRegister(MODMAP_SEND_MESSAGE, false);
   clearMessage();
 }
-
 
 /**
  * @brief Ecrit une valeur dans un registre
@@ -325,27 +322,28 @@ void ModbusSlave::clearMessage()
  */
 String ModbusSlave::toString(int firstRegister, int size)
 {
-  char msg[size] = {0};
+  String msg;
 
-  for (int i = 0; i < size / 2; i++)
+  for (int i = 0; i < size; i++)
   {
     const int16_t value = getHoldingRegister(i + firstRegister);
 
     uint8_t lastByte = (value & 0xFF);         // extract first byte
     uint8_t firstByte = ((value >> 8) & 0xFF); // extract second byte
-
+                                               /*
     Serial.print('[');
     Serial.print(firstByte, HEX);
     Serial.print('/');
     Serial.print(lastByte, HEX);
     Serial.println(']');
+    */
     if (firstByte)
-      msg[i * 2] = firstByte;
+      msg += firstByte;
     else
       break;
 
     if (lastByte)
-      msg[i * 2 + 1] = lastByte;
+      msg += lastByte;
     else
       break;
   }
@@ -363,5 +361,5 @@ String ModbusSlave::toString(int firstRegister, int size)
         break;
     }
   */
-  return (String)msg;
+  return msg;
 }
