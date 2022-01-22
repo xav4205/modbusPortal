@@ -177,6 +177,13 @@ void loop()
     // == GSM ==
     modbus.setHoldingRegister(MODMAP_GPRS_SIGNAL_LEVEL, sim800.requestSignalQuality());
     modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
+
+    if ((modbus.getHoldingRegister(MODMAP_LIVE_WORD_ECHO) - modbus.getHoldingRegister(MODMAP_LIVE_WORD)) > 10)
+    {
+      WebSerial.println("Communication avec l'automate perdue")
+    }
+    else
+      WebSerial.println("Communication avec l'automate etable")
   }
 
   static unsigned long liveWordTimer = millis();
@@ -187,13 +194,11 @@ void loop()
 
     unsigned int liveWord = (liveWordTimer - liveWordTimerOffset) / 1000;
 
-    if (liveWord >= 65535)
+    if (liveWord >= 32000)
       liveWordTimerOffset = millis();
 
     modbus.setHoldingRegister(MODMAP_LIVE_WORD, liveWord);
   }
-
-  
 
   // Routine du serveur Modbus
   modbus.run();
