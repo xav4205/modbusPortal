@@ -193,7 +193,7 @@ void ModbusSlave::run()
     watchDog = millis();
   }
 
-  if (getHoldingRegister(MODMAP_SEND_MESSAGE))
+  if (getHoldingRegister(MODMAP_SEND_MESSAGE) && getHoldingRegister(MODMAP_SEND_STATE) == MESSAGE_READY_TO_SEND)
   {
     sendMessageRequest();
   }
