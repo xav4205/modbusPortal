@@ -195,12 +195,45 @@ void ModbusSlave::run()
 
   if (getHoldingRegister(MODMAP_SEND_MESSAGE))
   {
-    newMessageReceived();
+    sendMessageRequest();
+  }
+
+  // Empeche l'envoi de message multiple
+  static unsigned long messageTimer[4] = {millis()};
+
+  switch (getHoldingRegister(MODMAP_SEND_STATE))
+  {
+  case MESSAGE_READY_TO_SEND:
+    messageTimer[MESSAGE_READY_TO_SEND] = millis();
+    break;
+  case MESSAGE_IN_PROGRESS:
+    if (millis() - messageTimer[MESSAGE_READY_TO_SEND] > MESSAGE_TIME_BETWEEN)
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
+    messageTimer[MESSAGE_IN_PROGRESS] = millis();
+    messageTimer[3] = millis();
+    break;
+  case MESSAGE_SENT:
+    if (millis() - messageTimer[MESSAGE_IN_PROGRESS] > MESSAGE_TIME_BETWEEN)
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
+    messageTimer[MESSAGE_SENT] = millis();
+    messageTimer[3] = millis();
+    break;
+  case MESSAGE_IS_ACK:
+    if (millis() - messageTimer[MESSAGE_SENT] > MESSAGE_TIME_BETWEEN)
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
+    break;
+  case MESSAGE_ERROR:
+    if (millis() - messageTimer[3] > MESSAGE_TIME_BETWEEN)
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
+    break;
+
+  default:
+    break;
   }
 }
 
 /**
- * @brief Affidche les statistique du serveur Modbus sur le port serie
+ * @brief Affidche les statistiques du serveur Modbus sur le port serie
  * 
  */
 void ModbusSlave::printStats()
@@ -260,7 +293,18 @@ void ModbusSlave::registerMessageWorker(MessageCb callback)
  * 
  */
 
-void ModbusSlave::newMessageReceived()
+void ModbusSlave::messageSent()
+{
+  setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_SENT);
+}
+
+/**
+ * @brief Execute la fonction enregistrée grace à registerMessageWorker
+ * en prélevant le numero et le texte dans le registre d'éxecution
+ * 
+ */
+
+void ModbusSlave::sendMessageRequest()
 {
 
   _messageWorker(
@@ -268,6 +312,7 @@ void ModbusSlave::newMessageReceived()
       toString(MODMAP_FIRST_MESSAGE_REGISTER, MODMAP_MAX_SIZE_MESSAGE));
 
   setHoldingRegister(MODMAP_SEND_MESSAGE, false);
+  setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IN_PROGRESS);
   clearMessage();
 }
 
@@ -322,7 +367,7 @@ void ModbusSlave::clearMessage()
  */
 String ModbusSlave::toString(int firstRegister, int size)
 {
-  String msg;
+  String msg = "";
 
   for (int i = 0; i < size; i++)
   {
@@ -338,12 +383,12 @@ String ModbusSlave::toString(int firstRegister, int size)
     Serial.println(']');
     */
     if (firstByte)
-      msg += firstByte;
+      msg += char(firstByte);
     else
       break;
 
     if (lastByte)
-      msg += lastByte;
+      msg += char(lastByte);
     else
       break;
   }

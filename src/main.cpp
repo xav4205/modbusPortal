@@ -112,7 +112,7 @@ void setup()
                    { WebSerial.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
                         {
-                          WebSerial.print("Progress: ");
+                          WebSerial.print(".");
                           WebSerial.println((progress / (total / 100)));
                         });
   ArduinoOTA.onError([](ota_error_t error)
@@ -146,9 +146,10 @@ void setup()
         WebSerial.print("Destinataire => ");
         WebSerial.println(recipient);
         WebSerial.print("Message => ");
-        WebSerial.println(recipient);
-        
-        //sim800.sendSms(recipient, text);
+        WebSerial.println(text);
+        /*
+        if (sim800.sendSms(recipient, text))
+          modbus.messageSent();*/
       });
 }
 
@@ -184,7 +185,7 @@ void loop()
   {
     liveWordTimer = millis();
 
-    unsigned int liveWord = (liveWordTimer - liveWordTimerOffset)/1000;
+    unsigned int liveWord = (liveWordTimer - liveWordTimerOffset) / 1000;
 
     if (liveWord >= 65535)
       liveWordTimerOffset = millis();
@@ -192,34 +193,7 @@ void loop()
     modbus.setHoldingRegister(MODMAP_LIVE_WORD, liveWord);
   }
 
-  if (Serial.available())
-  {
-    delay(500);
-
-    while (Serial.available()) // Vide le tampon du port serie
-    {
-      Serial.read();
-    }
-    if (WiFi.status() == WL_CONNECTED)
-    {
-      Serial.print("[*] Network information for ");
-      Serial.println(WIFI_SSID);
-
-      Serial.println("[+] BSSID : " + WiFi.BSSIDstr());
-      Serial.print("[+] Gateway IP : ");
-      Serial.println(WiFi.gatewayIP());
-      Serial.print("[+] Subnet Mask : ");
-      Serial.println(WiFi.subnetMask());
-      Serial.println((String) "[+] RSSI : " + WiFi.RSSI() + " dB");
-      Serial.print("[+] ESP32 IP : ");
-      Serial.println(WiFi.localIP());
-    }
-    else
-      Serial.println("Wifi non connecté");
-
-    modbus.printStats();
-    modbus.printHoldingRegisterInfo();
-  }
+  
 
   // Routine du serveur Modbus
   modbus.run();

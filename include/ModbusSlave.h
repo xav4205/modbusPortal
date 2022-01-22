@@ -4,7 +4,6 @@
 #include "ModbusServerWiFi.h"
 #include "config.h"
 
-
 using MessageCb = std::function<void(const String &recipient, const String &text)>;
 
 class ModbusSlave
@@ -20,7 +19,7 @@ public:
   uint16_t getHoldingRegister(uint16_t idx);
   void printHoldingRegisterInfo();
   void printStats();
-
+  void messageSent();
 
 private:
   // Set up a Modbus server
@@ -31,7 +30,7 @@ private:
 
   void clearHoldingRegister();
   void clearMessage();
-  void newMessageReceived();
+  void sendMessageRequest();
   static MBSworker readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE]);
   static MBSworker writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE]);
 

@@ -97,23 +97,27 @@ void Sim800::test(boolean reset)
  * @param recipient Numero du destinataire
  * @param text Corps du message
  */
-void Sim800::sendSms(const String &recipient, const String &text)
+bool Sim800::sendSms(const String &recipient, const String &text)
 {
   WebSerial.print("\nEnvoi du SMS au ");
   WebSerial.println(recipient);
   WebSerial.println(text);
 
+  if (recipient.length() >= 10 && text.length() > 0)
+  {
 
-  if(recipient.length()>=10 && text.length()>0){
+    String header = "AT+CMGS=\"" + (recipient) + ("\"");
 
-  String header = "AT+CMGS=\"" + (recipient) + ("\"");
-
-  atCommand(header, endAt::returnCarriage);
-  atCommand(text, endAt::endMark);
-  }else WebSerial.println("Parametre pour le sms non valide");
+    atCommand(header, endAt::returnCarriage);
+    atCommand(text, endAt::endMark);
+  }
+  else
+    WebSerial.println("Parametre pour le sms non valide");
 
   delay(5000);
   read();
+  //TODO retourner la reponse de la commande at
+  return true;
 }
 
 /**

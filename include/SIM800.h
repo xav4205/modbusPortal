@@ -18,7 +18,7 @@ public:
   Sim800();
 
   void begin(int baudRate, int txPin, int RxPin);
-  void sendSms(const String &sender, const String &text);
+  bool sendSms(const String &sender, const String &text);
   bool atCommand(const String at, endAt end);
   void sendEndMark(void);
   int requestSignalQuality();
