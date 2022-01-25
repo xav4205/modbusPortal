@@ -39,10 +39,13 @@ void recvMsg(uint8_t *data, size_t len)
     str += char(data[i]);
   }
 
-  if (sms)
+  /*if (sms)
     sim800.atCommand(str, endAt::endMark);
   else
     sim800.atCommand(str, endAt::returnCarriage);
+*/
+modbus.printHoldingRegisterInfo();
+  
 }
 
 void setup()
@@ -147,9 +150,9 @@ void setup()
         WebSerial.println(recipient);
         WebSerial.print("Message => ");
         WebSerial.println(text);
-        /*
+
         if (sim800.sendSms(recipient, text))
-          modbus.messageSent();*/
+          modbus.messageSent();
       });
 }
 
@@ -178,12 +181,12 @@ void loop()
     modbus.setHoldingRegister(MODMAP_GPRS_SIGNAL_LEVEL, sim800.requestSignalQuality());
     modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
 
-    if ((modbus.getHoldingRegister(MODMAP_LIVE_WORD_ECHO) - modbus.getHoldingRegister(MODMAP_LIVE_WORD)) > 10)
+    if ((modbus.getHoldingRegister(MODMAP_LIVE_WORD) - modbus.getHoldingRegister(MODMAP_LIVE_WORD_ECHO)) > 5)
     {
-      WebSerial.println("Communication avec l'automate perdue")
+      WebSerial.println("Communication avec l'automate perdue");
     }
     else
-      WebSerial.println("Communication avec l'automate etable")
+      WebSerial.println("Communication avec l'automate etablie");
   }
 
   static unsigned long liveWordTimer = millis();

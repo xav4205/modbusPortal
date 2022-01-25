@@ -2,6 +2,7 @@
 #include "ModbusSlave.h"
 #include "ModbusServerWiFi.h"
 #include "config.h"
+#include <WebSerial.h>
 
 //#define SERVER_ID 1;
 const uint8_t SERVER_ID(1);
@@ -186,6 +187,7 @@ void ModbusSlave::init()
 void ModbusSlave::run()
 {
   static unsigned long watchDog = millis();
+  unsigned int messageStatus = getHoldingRegister(MODMAP_SEND_STATE);
 
   if (millis() - watchDog > MODBUS_SERVER_WATCHDOG)
   {
@@ -193,38 +195,64 @@ void ModbusSlave::run()
     watchDog = millis();
   }
 
-  if (getHoldingRegister(MODMAP_SEND_MESSAGE) && getHoldingRegister(MODMAP_SEND_STATE) == MESSAGE_READY_TO_SEND)
+  if (getHoldingRegister(MODMAP_SEND_MESSAGE) && messageStatus == MESSAGE_READY_TO_SEND)
   {
+    setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IN_PROGRESS);
     sendMessageRequest();
   }
 
   // Empeche l'envoi de message multiple
-  static unsigned long messageTimer[4] = {millis()};
+  static unsigned long messageTimer = millis();
 
   switch (getHoldingRegister(MODMAP_SEND_STATE))
   {
   case MESSAGE_READY_TO_SEND:
-    messageTimer[MESSAGE_READY_TO_SEND] = millis();
+    messageTimer = millis();
     break;
   case MESSAGE_IN_PROGRESS:
-    if (millis() - messageTimer[MESSAGE_READY_TO_SEND] > MESSAGE_TIME_BETWEEN)
+
+    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
+    {
+      messageTimer = millis();
       setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
-    messageTimer[MESSAGE_IN_PROGRESS] = millis();
-    messageTimer[3] = millis();
+    }
+
     break;
   case MESSAGE_SENT:
-    if (millis() - messageTimer[MESSAGE_IN_PROGRESS] > MESSAGE_TIME_BETWEEN)
+    if (getHoldingRegister(MODMAP_MESSAGE_ACK))
+    {
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IS_ACK);
+    }
+
+    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
+    {
+      WebSerial.println("Pas d'acquitement suite à l'envoi");
+      messageTimer = millis();
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
+    }
+
+    /* if (millis() - messageTimer[MESSAGE_IN_PROGRESS] > MESSAGE_TIME_BETWEEN)
       setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
     messageTimer[MESSAGE_SENT] = millis();
-    messageTimer[3] = millis();
+    messageTimer[3] = millis();*/
     break;
   case MESSAGE_IS_ACK:
-    if (millis() - messageTimer[MESSAGE_SENT] > MESSAGE_TIME_BETWEEN)
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
+
+    setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
     break;
   case MESSAGE_ERROR:
-    if (millis() - messageTimer[3] > MESSAGE_TIME_BETWEEN)
+
+    if (getHoldingRegister(MODMAP_MESSAGE_ACK))
+    {
+      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IS_ACK);
+    }
+
+    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
+    {
+      WebSerial.println("Pas d'acquitement suite à l'erreur");
       setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
+    }
+
     break;
 
   default:
@@ -262,16 +290,16 @@ void ModbusSlave::clearHoldingRegister()
  */
 void ModbusSlave::printHoldingRegisterInfo()
 {
-  Serial.println("==========");
+  WebSerial.println("==========");
 
   for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; i++)
   {
     // Add word MSB-first to response buffer
-    Serial.print(400001 + i);
-    Serial.print(" -> ");
-    Serial.println(_holdingRegister[i]);
+    WebSerial.print(400001 + i);
+    WebSerial.print(" -> ");
+    WebSerial.println(_holdingRegister[i]);
   }
-  Serial.println("==========");
+  WebSerial.println("==========");
 }
 
 /**
@@ -296,6 +324,7 @@ void ModbusSlave::registerMessageWorker(MessageCb callback)
 void ModbusSlave::messageSent()
 {
   setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_SENT);
+  WebSerial.println("Message envoyé");
 }
 
 /**
@@ -311,8 +340,6 @@ void ModbusSlave::sendMessageRequest()
       toString(MODMAP_FIRST_PHONE_NUMBER_REGISTER, MODMAP_PHONE_NUMBER_SIZE_MESSAGE),
       toString(MODMAP_FIRST_MESSAGE_REGISTER, MODMAP_MAX_SIZE_MESSAGE));
 
-  setHoldingRegister(MODMAP_SEND_MESSAGE, false);
-  setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IN_PROGRESS);
   clearMessage();
 }
 
