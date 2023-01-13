@@ -1,10 +1,11 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/*=======Pin config===========*/
+/*=======Pin config===========
 #define SIM800_RX_PIN 25
 #define SIM800_TX_PIN 26
 #define SIM800_UART_BAUDRATE 19200
+*/
 
 /*=======Main config===========*/
 #define WATCHDOG_TIMER 30000
@@ -13,11 +14,13 @@
 
 #define WIFI_SSID "Wifi Metha"
 #define WIFI_PASSWORD "biogaz85"
-//#define WIFI_SSID "Reseau Xavier"
-//#define WIFI_PASSWORD "xmzbr85310"
+
+// #define WIFI_SSID "Reseau Xavier"
+// #define WIFI_PASSWORD "xmzbr85310"
+
 #define WIFI_LOCAL_IP \
   {                   \
-    192, 168, 85, 222 \
+    192, 168, 85, 223 \
   }
 #define WIFI_SUBNET  \
   {                  \
@@ -47,7 +50,7 @@
 #define MODMAP_GPRS_SIGNAL_LEVEL 6
 #define MODMAP_LIVE_WORD_ECHO 61
 #define MODMAP_SEND_MESSAGE 62 // Il y a un message à envoyer
-#define MODMAP_MESSAGE_ACK 63 
+#define MODMAP_MESSAGE_ACK 63
 #define MODMAP_FIRST_PHONE_NUMBER_REGISTER 65
 #define MODMAP_PHONE_NUMBER_SIZE_MESSAGE 5
 #define MODMAP_FIRST_MESSAGE_REGISTER 70
