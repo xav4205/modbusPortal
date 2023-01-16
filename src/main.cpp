@@ -53,7 +53,7 @@ void setup()
 
   //=========== Initialialisation de la station Wifi ==========
 
-  // Initialise les IP selon le fichier config.h
+  // Initialise les IP Configurer l'ip dans le fichier platform.ini
   IPAddress ip = IPAddress((int[])WIFI_LOCAL_IP[0], (int[])WIFI_LOCAL_IP[1], (int[])WIFI_LOCAL_IP[2], (int[])WIFI_LOCAL_IP[3]);
   IPAddress dns = IPAddress((int[])WIFI_DNS[0], (int[])WIFI_DNS[1], (int[])WIFI_DNS[2], (int[])WIFI_DNS[3]);
   IPAddress gateway = IPAddress((int[])WIFI_GATEWAY[0], (int[])WIFI_GATEWAY[1], (int[])WIFI_GATEWAY[2], (int[])WIFI_GATEWAY[3]);
@@ -87,15 +87,12 @@ void setup()
   //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
 
   SerialInterface.begin();
+
   if (WEB_SERIAL)
   {
     SerialInterface.enableWebSerial();
     SerialInterface.msgCallback(recvMsg);
   }
-  /*
-  WebSerial.begin(&server);
-  WebSerial.msgCallback(recvMsg);
-*/
 
   //=========== Initialialisation du serveur OTA (upload firmware par le Wifi) ==========
 

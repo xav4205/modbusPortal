@@ -15,18 +15,19 @@
 #define MODBUS_DEBUG 0
 
 /*===== Wifi Settings ======*/
+//NE RIEN MODIFIER ICI MAIS DANS platformio.init
 
-#define HOME_NETWORK
+#define ST(A) #A
+#define STR(A) ST(A)
 
-#ifdef HOME_NETWORK
+#define WIFI_SSID STR(WIFI_NETWORK_SSID)
+#define WIFI_PASSWORD STR(WIFI_NETWORK_PASSWORD)
 
-#define WIFI_SSID "Reseau Xavier"
-#define WIFI_PASSWORD "xmzbr85310"
-
-#define WIFI_LOCAL_IP \
-  {                   \
-    192, 168, 14, 223 \
+#define WIFI_LOCAL_IP                                      \
+  {                                                        \
+    IP_ADDRESS_1, IP_ADDRESS_2, IP_ADDRESS_3, IP_ADDRESS_4 \
   }
+
 #define WIFI_SUBNET  \
   {                  \
     255, 255, 255, 0 \
@@ -35,34 +36,11 @@
   {              \
     1, 1, 1, 1   \
   }
-#define WIFI_GATEWAY \
-  {                  \
-    192, 168, 14, 1  \
+#define WIFI_GATEWAY                            \
+  {                                             \
+    IP_ADDRESS_1, IP_ADDRESS_2, IP_ADDRESS_3, 1 \
   }
 
-#else
-
-#define WIFI_SSID "Wifi Metha"
-#define WIFI_PASSWORD "biogaz85"
-
-#define WIFI_LOCAL_IP \
-  {                   \
-    192, 168, 85, 223 \
-  }
-#define WIFI_SUBNET  \
-  {                  \
-    255, 255, 255, 0 \
-  }
-#define WIFI_DNS \
-  {              \
-    1, 1, 1, 1   \
-  }
-#define WIFI_GATEWAY \
-  {                  \
-    192, 168, 85, 1  \
-  }
-
-#endif
 
 /*===== Modbus Server Settings ======*/
 
