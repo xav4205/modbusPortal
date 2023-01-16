@@ -1,13 +1,14 @@
 #include <Arduino.h>
-#include <WebSerial.h>
 
 #include "Relay.h"
 #include "config.h"
+#include "SerialInterface.h"
 
-Relay::Relay()
+Relay::Relay(unsigned int pin)
 {
 
   _state = false;
+  _pin = pin;
   _timer = millis();
   _relayWatchdogTimer = millis();
 
@@ -56,7 +57,23 @@ unsigned long Relay::pulse(unsigned long time)
   return time;
 }
 
-void Relay::process()
+/**
+ * @brief Routine d'actionnement du relais
+ * Doit etre inseré dans la fonction loop()
+ *
+ */
+
+void Relay::run()
 {
   // TODO state -> pin out
+  static bool previousState = false;
+  if (_state != previousState)
+  {
+    previousState = _state;
+    SerialInterface.print("Changement d'état du relais :");
+    if (_state)
+      SerialInterface.println("ON");
+    else
+      SerialInterface.println("OFF");
+  }
 }

@@ -1,22 +1,49 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-/*=======Pin config===========
-#define SIM800_RX_PIN 25
-#define SIM800_TX_PIN 26
-#define SIM800_UART_BAUDRATE 19200
-*/
+//=======Pin config===========
+
+#define OUTPUT_1_PIN 1
+#define OUTPUT_2_PIN 2
+#define INPUT_1_PIN 3
+#define INPUT_2_PIN 4
 
 /*=======Main config===========*/
-#define WATCHDOG_TIMER 30000
+#define WATCHDOG_TIMER 10000
+#define MODBUS_LINK_TIMER 5000
+#define WEB_SERIAL 1
+#define MODBUS_DEBUG 0
 
 /*===== Wifi Settings ======*/
 
+#define HOME_NETWORK
+
+#ifdef HOME_NETWORK
+
+#define WIFI_SSID "Reseau Xavier"
+#define WIFI_PASSWORD "xmzbr85310"
+
+#define WIFI_LOCAL_IP \
+  {                   \
+    192, 168, 14, 223 \
+  }
+#define WIFI_SUBNET  \
+  {                  \
+    255, 255, 255, 0 \
+  }
+#define WIFI_DNS \
+  {              \
+    1, 1, 1, 1   \
+  }
+#define WIFI_GATEWAY \
+  {                  \
+    192, 168, 14, 1  \
+  }
+
+#else
+
 #define WIFI_SSID "Wifi Metha"
 #define WIFI_PASSWORD "biogaz85"
-
-// #define WIFI_SSID "Reseau Xavier"
-// #define WIFI_PASSWORD "xmzbr85310"
 
 #define WIFI_LOCAL_IP \
   {                   \
@@ -32,47 +59,25 @@
   }
 #define WIFI_GATEWAY \
   {                  \
-    192, 168, 14, 1  \
+    192, 168, 85, 1  \
   }
+
+#endif
 
 /*===== Modbus Server Settings ======*/
 
 #define MODBUS_SERVER_WATCHDOG 60000
-#define MODBUS_HOLDING_REGISTER_SIZE 256
+#define MODBUS_HOLDING_REGISTER_SIZE 8
 
 /*===== Modbus Register Map ======*/
 
-#define MODMAP_LIVE_WORD 1
-#define MODMAP_SEND_STATE 2 // Etat de l'envoi
-#define MODMAP_WIFI_STATUS 3
-#define MODMAP_WIFI_SIGNAL_LEVEL 4
-#define MODMAP_GPRS_ATTACH 5
-#define MODMAP_GPRS_SIGNAL_LEVEL 6
-#define MODMAP_LIVE_WORD_ECHO 61
-#define MODMAP_SEND_MESSAGE 62 // Il y a un message à envoyer
-#define MODMAP_MESSAGE_ACK 63
-#define MODMAP_FIRST_PHONE_NUMBER_REGISTER 65
-#define MODMAP_PHONE_NUMBER_SIZE_MESSAGE 5
-#define MODMAP_FIRST_MESSAGE_REGISTER 70
-#define MODMAP_MAX_SIZE_MESSAGE 70
-
-#define MESSAGE_READY_TO_SEND 0
-#define MESSAGE_IN_PROGRESS 1
-#define MESSAGE_SENT 2
-#define MESSAGE_IS_ACK 3
-#define MESSAGE_ERROR 99
-#define MESSAGE_TIME_BETWEEN 10000
-
-/*===== Sim Module Settings ======*/
-#define DEBUG_AT 1
-#define DEBUG_RESPONSE 0
-#define T_RESP 5000
-#define TIME_OUT 1000
-#define AT_TIME_OUT 5000
-#define AT_DELAY 100
-#define SIM_PIN_CODE "0000"
-#define NB_OF_TRY_START 10
-#define GPRS_WATCHDOG 1000000
-#define MAX_NB_REPLY 10
+#define MODMAP_LIVE_WORD 1 // Mot de vie
+#define MODMAP_OUTPUT_1 2  // Etat de la sortie 1
+#define MODMAP_OUTPUT_2 3  // Etat de la sortie 2
+#define MODMAP_INPUT_1 4   // Etat de l'entree 1
+#define MODMAP_INPUT_2 5   // Etat de l'entree 2
+#define MODMAP_WIFI_STATUS 6
+#define MODMAP_WIFI_SIGNAL_LEVEL 7
+#define MODMAP_LIVE_WORD_ECHO 8
 
 #endif

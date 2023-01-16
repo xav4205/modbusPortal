@@ -6,46 +6,39 @@
 
 #include <AsyncTCP.h>
 
-#include <ESPAsyncWebServer.h>
-#include <WebSerial.h>
-
 #include "config.h"
-#include "SIM800.h"
+#include "Relay.h"
 #include "ModbusSlave.h"
 #include "ModbusServerWiFi.h"
+#include "SerialInterface.h"
 
-AsyncWebServer server(80);
+// AsyncWebServer server(80);
 
-Sim800 sim800;
+Relay relay(0);
 
 ModbusSlave modbus;
 
 // Surveille les entrée du WebSerial
 void recvMsg(uint8_t *data, size_t len)
 {
-  WebSerial.println("Send AT command...");
+  SerialInterface.println("Received Data...");
 
-  bool sms = false;
-  String str = "";
+  String d = "";
   for (int i = 0; i < len; i++)
   {
-    if (char(data[i]) == '&')
-    {
-      WebSerial.println("Detect Ctrl+Z");
-      sms = true;
-      break;
-    }
-
-    str += char(data[i]);
+    d += char(data[i]);
+  }
+  SerialInterface.println(d);
+  if (d == "ON")
+  {
+    relay.on();
+  }
+  if (d == "OFF")
+  {
+    relay.off();
   }
 
-  /*if (sms)
-    sim800.atCommand(str, endAt::endMark);
-  else
-    sim800.atCommand(str, endAt::returnCarriage);
-*/
-modbus.printHoldingRegisterInfo();
-  
+  modbus.printHoldingRegisterInfo();
 }
 
 void setup()
@@ -84,22 +77,31 @@ void setup()
       ESP.restart();
     restartTimer--;
   }
+  Serial.println();
 
   // print local WIFI_LOCAL_IP address:
   IPAddress localIP = WiFi.localIP();
-  Serial.printf("Addresse IP locale: %u.%u.%u.%u\n", localIP[0], localIP[1], localIP[2], localIP[3]);
+  Serial.printf("Adresse IP locale: %u.%u.%u.%u\n", localIP[0], localIP[1], localIP[2], localIP[3]);
+  Serial.println();
 
   //=========== Initialialisation du serveur WebSerial (port serie distant) ==========
 
+  SerialInterface.begin();
+  if (WEB_SERIAL)
+  {
+    SerialInterface.enableWebSerial();
+    SerialInterface.msgCallback(recvMsg);
+  }
+  /*
   WebSerial.begin(&server);
   WebSerial.msgCallback(recvMsg);
-  server.begin();
+*/
 
   //=========== Initialialisation du serveur OTA (upload firmware par le Wifi) ==========
 
   // Port defaults to 3232
-  ArduinoOTA.setHostname("ModbusSms ESP32");
-  ArduinoOTA.setPassword("biogaz");
+  ArduinoOTA.setHostname("Modbusportal ESP32");
+  ArduinoOTA.setPassword("portal");
   ArduinoOTA.onStart([]()
                      {
                        String type;
@@ -109,35 +111,30 @@ void setup()
                          type = "filesystem";
 
                        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-                       WebSerial.println("Start updating " + type);
-                     });
+
+                       SerialInterface.println("Start updating " + type); });
   ArduinoOTA.onEnd([]()
-                   { WebSerial.println("\nEnd"); });
+                   { SerialInterface.println("\nEnd"); });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
                         {
-                          WebSerial.print(".");
-                          WebSerial.println((progress / (total / 100)));
-                        });
+                          SerialInterface.print(".");
+                          SerialInterface.println((progress / (total / 100))); });
   ArduinoOTA.onError([](ota_error_t error)
                      {
-                       WebSerial.print("Error[");
-                       WebSerial.print(error);
-                       WebSerial.print("]: ");
+                       SerialInterface.print("Error[");
+                       SerialInterface.print(error);
+                       SerialInterface.print("]: ");
                        if (error == OTA_AUTH_ERROR)
-                         WebSerial.println("Auth Failed");
+                         SerialInterface.println("Auth Failed");
                        else if (error == OTA_BEGIN_ERROR)
-                         WebSerial.println("Begin Failed");
+                         SerialInterface.println("Begin Failed");
                        else if (error == OTA_CONNECT_ERROR)
-                         WebSerial.println("Connect Failed");
+                         SerialInterface.println("Connect Failed");
                        else if (error == OTA_RECEIVE_ERROR)
-                         WebSerial.println("Receive Failed");
+                         SerialInterface.println("Receive Failed");
                        else if (error == OTA_END_ERROR)
-                         WebSerial.println("End Failed");
-                     });
+                         SerialInterface.println("End Failed"); });
   ArduinoOTA.begin();
-
-  //=========== Initialialisation du module SIM800 ==========
-  sim800.begin(SIM800_UART_BAUDRATE, SIM800_TX_PIN, SIM800_RX_PIN);
 
   //=========== Initialialisation du serveur Modbus ==========
   modbus.init();
@@ -145,15 +142,18 @@ void setup()
   modbus.registerMessageWorker(
       [](const String &recipient, const String &text)
       {
-        WebSerial.println("Envoi d'un message");
-        WebSerial.print("Destinataire => ");
-        WebSerial.println(recipient);
-        WebSerial.print("Message => ");
-        WebSerial.println(text);
-
-        if (sim800.sendSms(recipient, text))
-          modbus.messageSent();
+        SerialInterface.println("Envoi d'un message");
+        SerialInterface.print("Destinataire => ");
+        SerialInterface.println(recipient);
+        SerialInterface.print("Message => ");
+        SerialInterface.println(text);
+        /*
+                if (sim800.sendSms(recipient, text))
+                  modbus.messageSent();
+                  */
       });
+
+  Serial.printf("Initialisation terminée");
 }
 
 void loop()
@@ -166,7 +166,7 @@ void loop()
   // Lie les stats du module SIM800 et les integrent au registre Modbus correspondant
   // Préleve les infos du Wifi et les stocke dans le registre d'éxecution
   static unsigned long watchDog = millis();
-  if (millis() - watchDog > WATCHDOG_TIMER)
+  if (millis() - watchDog >= WATCHDOG_TIMER)
   {
     watchDog = millis();
 
@@ -177,29 +177,22 @@ void loop()
     }
     modbus.setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
 
-    // == GSM ==
-    modbus.setHoldingRegister(MODMAP_GPRS_SIGNAL_LEVEL, sim800.requestSignalQuality());
-    modbus.setHoldingRegister(MODMAP_GPRS_ATTACH, sim800.requestNetworkRegistration());
+    // == MODBUS SerialInterface ==
 
     if ((modbus.getHoldingRegister(MODMAP_LIVE_WORD) - modbus.getHoldingRegister(MODMAP_LIVE_WORD_ECHO)) > 5)
     {
-      WebSerial.println("Communication avec l'automate perdue");
+      SerialInterface.println("Communication avec l'automate perdue");
     }
     else
-      WebSerial.println("Communication avec l'automate etablie");
+      SerialInterface.println("Communication avec l'automate etablie");
   }
 
   static unsigned long liveWordTimer = millis();
-  static unsigned long liveWordTimerOffset = millis();
-  if (millis() - liveWordTimer > 1000)
+
+  if (millis() - liveWordTimer >= 1000)
   {
     liveWordTimer = millis();
-
-    unsigned int liveWord = (liveWordTimer - liveWordTimerOffset) / 1000;
-
-    if (liveWord >= 32000)
-      liveWordTimerOffset = millis();
-
+    unsigned int liveWord = liveWordTimer / 1000;
     modbus.setHoldingRegister(MODMAP_LIVE_WORD, liveWord);
   }
 
@@ -207,5 +200,5 @@ void loop()
   modbus.run();
 
   // Routine du module SIM800
-  sim800.run();
+  relay.run();
 }

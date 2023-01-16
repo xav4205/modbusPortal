@@ -2,9 +2,9 @@
 #include "ModbusSlave.h"
 #include "ModbusServerWiFi.h"
 #include "config.h"
-#include <WebSerial.h>
+#include <SerialInterface.h>
 
-//#define SERVER_ID 1;
+// #define SERVER_ID 1;
 const uint8_t SERVER_ID(1);
 
 ModbusSlave::ModbusSlave()
@@ -30,15 +30,15 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     if (addr > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      Serial.println("Adresse non valide");
+      SerialInterface.println("Adresse non valide");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
 
-    Serial.print("Demande de lecture de ");
-    Serial.print(wrds);
-    Serial.print(" mots à partir de l'adresse ");
-    Serial.println(addr);
+    SerialInterface.print("Demande de lecture de ");
+    SerialInterface.print(wrds);
+    SerialInterface.print(" mots à partir de l'adresse ");
+    SerialInterface.println(addr);
 
     // Modbus address is 1..n, memory address 0..n-1
     addr--;
@@ -47,7 +47,7 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      Serial.println("Adresse non valide (depassement)");
+      SerialInterface.println("Adresse non valide (depassement)");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
@@ -55,19 +55,19 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     // Prepare response
     response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(wrds * 2));
 
-    Serial.println("---------");
+    SerialInterface.println("---------");
     // Loop over all words to be sent
     for (uint16_t i = 0; i < wrds; i++)
     {
       uint16_t val = reg[addr + i];
       // Add word MSB-first to response buffer
-      Serial.print(addr + 400001 + i);
-      Serial.print(" -> ");
-      Serial.println(val);
+      SerialInterface.print(addr + 400001 + i);
+      SerialInterface.print(" -> ");
+      SerialInterface.println(val);
 
       response.add(val);
     }
-    Serial.println("---------");
+    SerialInterface.println("---------");
 
     // Return the data response
     return response;
@@ -106,18 +106,18 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
     if (addr > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      Serial.println("Adresse non valide");
+      SerialInterface.println("Adresse non valide");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
 
-    Serial.print("Demande d'ecriture de ");
-    Serial.print(wrds);
-    Serial.print(" mots à partir de l'adresse ");
-    Serial.print(addr);
-    Serial.print(" (");
-    Serial.print(bytesCount);
-    Serial.println(" bytes)");
+    SerialInterface.print("Demande d'ecriture de ");
+    SerialInterface.print(wrds);
+    SerialInterface.print(" mots à partir de l'adresse ");
+    SerialInterface.print(addr);
+    SerialInterface.print(" (");
+    SerialInterface.print(bytesCount);
+    SerialInterface.println(" bytes)");
 
     // Modbus address is 1..n, memory address 0..n-1
     addr--;
@@ -126,7 +126,7 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
     if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      Serial.println("Adresse non valide (depassement)");
+      SerialInterface.println("Adresse non valide (depassement)");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
@@ -134,23 +134,23 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
     // Prepare response
     // response.add(request.getServerID(), request.getFunctionCode());
 
-    Serial.println("++++++++++");
+    SerialInterface.println("++++++++++");
     // Loop over all words to be sent
     for (uint16_t i = 0; i < wrds; i++)
     {
       uint16_t val = reg[addr + i];
       // Add word MSB-first to response buffer
-      Serial.print(addr + 1 + i);
-      Serial.print(" <- ");
-      Serial.print(values[i]);
-      Serial.print(" (");
-      Serial.print(val);
-      Serial.println(")");
+      SerialInterface.print(addr + 1 + i);
+      SerialInterface.print(" <- ");
+      SerialInterface.print(values[i]);
+      SerialInterface.print(" (");
+      SerialInterface.print(val);
+      SerialInterface.println(")");
 
       reg[addr + i] = values[i];
     }
 
-    Serial.println("++++++++");
+    SerialInterface.println("++++++++");
 
     response = ECHO_RESPONSE;
     //  response.add(request.getServerID(), request.getFunctionCode(), addr+1, wrds);
@@ -182,98 +182,33 @@ void ModbusSlave::init()
  * @brief Routine
  * - Va chercher les info du wifi
  * - Déclenche l'execution de la fonction d'envoi quand le jeton "new message" passe à 1
- * 
+ *
  */
 void ModbusSlave::run()
 {
   static unsigned long watchDog = millis();
-  unsigned int messageStatus = getHoldingRegister(MODMAP_SEND_STATE);
 
   if (millis() - watchDog > MODBUS_SERVER_WATCHDOG)
   {
 
     watchDog = millis();
   }
-
-  if (getHoldingRegister(MODMAP_SEND_MESSAGE) && messageStatus == MESSAGE_READY_TO_SEND)
-  {
-    setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IN_PROGRESS);
-    sendMessageRequest();
-  }
-
-  // Empeche l'envoi de message multiple
-  static unsigned long messageTimer = millis();
-
-  switch (getHoldingRegister(MODMAP_SEND_STATE))
-  {
-  case MESSAGE_READY_TO_SEND:
-    messageTimer = millis();
-    break;
-  case MESSAGE_IN_PROGRESS:
-
-    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
-    {
-      messageTimer = millis();
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
-    }
-
-    break;
-  case MESSAGE_SENT:
-    if (getHoldingRegister(MODMAP_MESSAGE_ACK))
-    {
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IS_ACK);
-    }
-
-    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
-    {
-      WebSerial.println("Pas d'acquitement suite à l'envoi");
-      messageTimer = millis();
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
-    }
-
-    /* if (millis() - messageTimer[MESSAGE_IN_PROGRESS] > MESSAGE_TIME_BETWEEN)
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_ERROR);
-    messageTimer[MESSAGE_SENT] = millis();
-    messageTimer[3] = millis();*/
-    break;
-  case MESSAGE_IS_ACK:
-
-    setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
-    break;
-  case MESSAGE_ERROR:
-
-    if (getHoldingRegister(MODMAP_MESSAGE_ACK))
-    {
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_IS_ACK);
-    }
-
-    if (millis() - messageTimer > MESSAGE_TIME_BETWEEN)
-    {
-      WebSerial.println("Pas d'acquitement suite à l'erreur");
-      setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_READY_TO_SEND);
-    }
-
-    break;
-
-  default:
-    break;
-  }
 }
 
 /**
- * @brief Affidche les statistiques du serveur Modbus sur le port serie
- * 
+ * @brief Affiche les statistiques du serveur Modbus sur le port serie
+ *
  */
 void ModbusSlave::printStats()
 {
 
-  Serial.print(_MBserver.activeClients());
-  Serial.println(" clients running.");
+  SerialInterface.print(_MBserver.activeClients());
+  SerialInterface.println(" clients running.");
 }
 
 /**
  * @brief Vide le registre d'execution
- * 
+ *
  */
 void ModbusSlave::clearHoldingRegister()
 {
@@ -286,29 +221,29 @@ void ModbusSlave::clearHoldingRegister()
 
 /**
  * @brief Affiche les valeurs du registre sur le port série
- * 
+ *
  */
 void ModbusSlave::printHoldingRegisterInfo()
 {
-  WebSerial.println("==========");
+  SerialInterface.println("==========");
 
   for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; i++)
   {
     // Add word MSB-first to response buffer
-    WebSerial.print(400001 + i);
-    WebSerial.print(" -> ");
-    WebSerial.println(_holdingRegister[i]);
+    SerialInterface.print(400001 + i);
+    SerialInterface.print(" -> ");
+    SerialInterface.println(_holdingRegister[i]);
   }
-  WebSerial.println("==========");
+  SerialInterface.println("==========");
 }
 
 /**
- * @brief Enregistre une fonction à executer lorsque qu'un message est reçu. 
- * 
+ * @brief Enregistre une fonction à executer lorsque qu'un message est reçu.
+ *
  * Si cette fonction est appelée plusieurs fois, seule la dernière fonction est enregistrée.
  * @param callback Pointeur sur la fonction à exectuer
  * Celle-ci doit etre de type (String destinataire, String text)
- * 
+ *
  */
 void ModbusSlave::registerMessageWorker(MessageCb callback)
 {
@@ -316,81 +251,49 @@ void ModbusSlave::registerMessageWorker(MessageCb callback)
 }
 
 /**
- * @brief Execute la fonction enregistrée grace à registerMessageWorker
- * en prélevant le numero et le texte dans le registre d'éxecution
- * 
- */
-
-void ModbusSlave::messageSent()
-{
-  setHoldingRegister(MODMAP_SEND_STATE, MESSAGE_SENT);
-  WebSerial.println("Message envoyé");
-}
-
-/**
- * @brief Execute la fonction enregistrée grace à registerMessageWorker
- * en prélevant le numero et le texte dans le registre d'éxecution
- * 
- */
-
-void ModbusSlave::sendMessageRequest()
-{
-
-  _messageWorker(
-      toString(MODMAP_FIRST_PHONE_NUMBER_REGISTER, MODMAP_PHONE_NUMBER_SIZE_MESSAGE),
-      toString(MODMAP_FIRST_MESSAGE_REGISTER, MODMAP_MAX_SIZE_MESSAGE));
-
-  clearMessage();
-}
-
-/**
  * @brief Ecrit une valeur dans un registre
- * 
+ *
  * @param idx Index du registre à ecrire
  */
 void ModbusSlave::setHoldingRegister(uint16_t idx, uint16_t value)
 {
   // DebugSerial.printf("Set HRegister [%d] <- %d\n", idx, value);
   if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
+  {
     _holdingRegister[idx - 1] = value;
+    if (MODBUS_DEBUG)
+    {
+      SerialInterface.println("Demande d'écriture");
+      printHoldingRegisterInfo();
+    }
+  }
+  else
+    SerialInterface.println("Depassement d'index de registre (Demande d'écriture)");
 
-  return;
 }
 
 /**
  * @brief Lie la valeur stockée dans un registre
- * 
+ *
  * @param idx Index du registre à lire
- * @return Valeur extraite du registre 
+ * @return Valeur extraite du registre
  */
 uint16_t ModbusSlave::getHoldingRegister(uint16_t idx)
 {
   if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
     return _holdingRegister[idx - 1];
+  else
+    SerialInterface.println("Depassement d'index de registre (Demande de lecture)");
 
   return 0;
 }
 
 /**
- * @brief Efface le message du registre correspondant
- * 
- */
-void ModbusSlave::clearMessage()
-{
-  for (uint8_t i = MODMAP_FIRST_MESSAGE_REGISTER; i < MODMAP_FIRST_MESSAGE_REGISTER + MODMAP_MAX_SIZE_MESSAGE; i++)
-  {
-    setHoldingRegister(i, 0);
-  }
-
-  return;
-}
-
-/**
  * @brief Convertit les octets stockés en modbus en texte
- * 
+ *
  * @param firstRegister Index du premier registre à lire
  * @param size Nombre de registre à lire
- * @return Texte extrait du registre 
+ * @return Texte extrait du registre
  */
 String ModbusSlave::toString(int firstRegister, int size)
 {
@@ -403,11 +306,11 @@ String ModbusSlave::toString(int firstRegister, int size)
     uint8_t lastByte = (value & 0xFF);         // extract first byte
     uint8_t firstByte = ((value >> 8) & 0xFF); // extract second byte
                                                /*
-    Serial.print('[');
-    Serial.print(firstByte, HEX);
-    Serial.print('/');
-    Serial.print(lastByte, HEX);
-    Serial.println(']');
+    SerialInterface.print('[');
+    SerialInterface.print(firstByte, HEX);
+    SerialInterface.print('/');
+    SerialInterface.print(lastByte, HEX);
+    SerialInterface.println(']');
     */
     if (firstByte)
       msg += char(firstByte);

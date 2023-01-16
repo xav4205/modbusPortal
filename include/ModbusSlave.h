@@ -19,7 +19,6 @@ public:
   uint16_t getHoldingRegister(uint16_t idx);
   void printHoldingRegisterInfo();
   void printStats();
-  void messageSent();
 
 private:
   // Set up a Modbus server
@@ -29,8 +28,7 @@ private:
   MessageCb _messageWorker;
 
   void clearHoldingRegister();
-  void clearMessage();
-  void sendMessageRequest();
+
   static MBSworker readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE]);
   static MBSworker writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE]);
 
