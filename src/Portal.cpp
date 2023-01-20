@@ -65,9 +65,9 @@ void Portal::run()
     _state = PortalState::CLOSED;
   }
 
-  if (millis() - _openTimer >= 30000 && _state == PortalState::OPEN_PROCESS:)
+  if (millis() - _openTimer >= 30000 && _state == PortalState::OPEN_PROCESS)
     _state = PortalState::OPENED;
 
   _previousState = _state;
 }
-}
+
