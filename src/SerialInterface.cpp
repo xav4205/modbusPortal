@@ -13,11 +13,12 @@ void SerialInterfaceClass::begin()
   Serial.println("Init WebServer");
   WebSerial.begin(_server);
   _server->begin();
+  updateTag();
 }
 
 void SerialInterfaceClass::updateTag()
 {
-  _tag = millis();
+  _tag = millis() / 1000;
 }
 
 void SerialInterfaceClass::enableWebSerial(bool activate)
@@ -33,117 +34,72 @@ void SerialInterfaceClass::msgCallback(RecvMsgHandler msg)
 // Print
 void SerialInterfaceClass::print(String m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(const char *m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(char *m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(int m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(uint8_t m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(uint16_t m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(uint32_t m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(double m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }
 
 void SerialInterfaceClass::print(float m)
 {
-  updateTag();
   if (_webOn)
-  {
-    WebSerial.print(_tag);
-    WebSerial.print(" : ");
     WebSerial.print(m);
-  }
   else
     Serial.print(m);
 }

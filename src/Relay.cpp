@@ -12,6 +12,8 @@ Relay::Relay(unsigned int pin)
   _timer = millis();
   _relayWatchdogTimer = millis();
 
+  pinMode(pin, OUTPUT);
+
   return;
 }
 
@@ -21,6 +23,8 @@ Relay::Relay(unsigned int pin)
  */
 void Relay::on()
 {
+  if (!_state)
+    SerialInterface.println("Changement d'état du relais : ON");
   _state = true;
 }
 
@@ -30,6 +34,8 @@ void Relay::on()
  */
 void Relay::off()
 {
+  if (_state)
+    SerialInterface.println("Changement d'état du relais : OFF");
   _state = false;
 }
 
@@ -39,6 +45,7 @@ void Relay::off()
  */
 bool Relay::toogle()
 {
+  SerialInterface.print("TOOGLE");
   _state = !_state;
   return _state;
 }
@@ -49,12 +56,15 @@ bool Relay::toogle()
  * @param time Temps de la tempo en ms
  */
 
-unsigned long Relay::pulse(unsigned long time)
+void Relay::pulse(unsigned long time)
 {
 
-  // TODO Creer une tempo
+  SerialInterface.print("PULSE");
+  _timerIsActive = true;
+  _setpointTimer = time;
+  _timer = millis();
 
-  return time;
+  return;
 }
 
 /**
@@ -65,15 +75,22 @@ unsigned long Relay::pulse(unsigned long time)
 
 void Relay::run()
 {
-  // TODO state -> pin out
-  static bool previousState = false;
-  if (_state != previousState)
+
+  if (_timerIsActive)
   {
-    previousState = _state;
-    SerialInterface.print("Changement d'état du relais :");
-    if (_state)
-      SerialInterface.println("ON");
+    if (millis() - _timer <= _setpointTimer)
+      on();
     else
-      SerialInterface.println("OFF");
+    {
+      _timerIsActive = false;
+      off();
+    }
   }
+
+  digitalWrite(_pin, !_state);
+}
+
+bool Relay::getState()
+{
+  return _state;
 }

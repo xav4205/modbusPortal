@@ -8,7 +8,13 @@
     "sstream": "cpp",
     "streambuf": "cpp",
     "functional": "cpp",
-    "system_error": "cpp"
+    "system_error": "cpp",
+    "ratio": "cpp",
+    "array": "cpp",
+    "regex": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }

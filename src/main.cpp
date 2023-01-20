@@ -7,18 +7,22 @@
 #include <AsyncTCP.h>
 
 #include "config.h"
-#include "Relay.h"
 #include "ModbusSlave.h"
 #include "ModbusServerWiFi.h"
 #include "SerialInterface.h"
+#include "Relay.h"
+#include "Portal.h"
 
 // AsyncWebServer server(80);
 
-Relay relay(0);
+Relay relay1(OUTPUT_1_PIN);
+Relay relay2(OUTPUT_2_PIN);
 
 ModbusSlave modbus;
 
-// Surveille les entrée du WebSerial
+Portal portal(&relay1,INPUT_1_PIN);
+
+// Surveille les entrées du WebSerial
 void recvMsg(uint8_t *data, size_t len)
 {
   SerialInterface.println("Received Data...");
@@ -29,20 +33,20 @@ void recvMsg(uint8_t *data, size_t len)
     d += char(data[i]);
   }
   SerialInterface.println(d);
-  if (d == "ON")
-  {
-    relay.on();
-  }
-  if (d == "OFF")
-  {
-    relay.off();
-  }
 
-  modbus.printHoldingRegisterInfo();
+  if (d == "ON")
+    modbus.setHoldingRegister(MODMAP_PORTAL_REQUEST, 1);
+
+  if (d == "OFF")
+    modbus.setHoldingRegister(MODMAP_PORTAL_REQUEST, 0);
 }
 
 void setup()
 {
+
+  pinMode(INPUT_1_PIN, PULLUP);
+  pinMode(INPUT_2_PIN, PULLUP);
+
   //=========== Initialialisation du port Serie ==========
   Serial.begin(115200);
 
@@ -98,7 +102,7 @@ void setup()
 
   // Port defaults to 3232
   ArduinoOTA.setHostname("Modbusportal ESP32");
-  ArduinoOTA.setPassword("portal");
+  ArduinoOTA.setPassword(ESP_PASSWORD);
   ArduinoOTA.onStart([]()
                      {
                        String type;
@@ -136,18 +140,19 @@ void setup()
   //=========== Initialialisation du serveur Modbus ==========
   modbus.init();
   // Enregistrement de la fonction d'envoi
-  modbus.registerMessageWorker(
-      [](const String &recipient, const String &text)
+  modbus.onChange(
+      [](const int &idx, const int &value)
       {
-        SerialInterface.println("Envoi d'un message");
-        SerialInterface.print("Destinataire => ");
-        SerialInterface.println(recipient);
-        SerialInterface.print("Message => ");
-        SerialInterface.println(text);
-        /*
-                if (sim800.sendSms(recipient, text))
-                  modbus.messageSent();
-                  */
+        if (idx == MODMAP_PORTAL_REQUEST)
+        {
+          if (value)
+          {
+            SerialInterface.println("MODBUS : Debut demande");
+            portal.move();
+          }
+          else
+            SerialInterface.println("MODBUS : Fin demande");
+        }
       });
 
   Serial.printf("Initialisation terminée");
@@ -193,9 +198,29 @@ void loop()
     modbus.setHoldingRegister(MODMAP_LIVE_WORD, liveWord);
   }
 
+  // Copie l'état des relais dans le registre modbus
+  modbus.setHoldingRegister(MODMAP_OUTPUT_1, relay1.getState());
+  modbus.setHoldingRegister(MODMAP_OUTPUT_2, relay2.getState());
+  modbus.setHoldingRegister(MODMAP_PORTAL_STATE, (int)portal.getState());
+  modbus.setHoldingRegister(MODMAP_MAGNET_SENSOR, portal.getSensorState());
+
   // Routine du serveur Modbus
   modbus.run();
+  portal.run();
+  relay1.run();
+  relay2.run();
 
-  // Routine du module SIM800
-  relay.run();
+  /*
+    pinMode(OUTPUT_1_PIN, OUTPUT);
+    pinMode(OUTPUT_2_PIN, OUTPUT);
+
+    digitalWrite(OUTPUT_1_PIN, true);
+    digitalWrite(OUTPUT_2_PIN, false);
+
+    delay(1000);
+        digitalWrite(OUTPUT_1_PIN, false);
+    digitalWrite(OUTPUT_2_PIN, true);
+    delay(2000);
+
+    */
 }

@@ -2,14 +2,14 @@
 #include "ModbusSlave.h"
 #include "ModbusServerWiFi.h"
 #include "config.h"
-#include <SerialInterface.h>
+#include "Relay.h"
 
 // #define SERVER_ID 1;
 const uint8_t SERVER_ID(1);
 
 ModbusSlave::ModbusSlave()
 {
-  _messageWorker = [](const String &recipient, const String &text) {}; // Enregistrement d'une fonction vide
+  _onChange = [](const int idx, const int value) {}; // Enregistrement d'une fonction vide
 }
 
 MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER_SIZE])
@@ -30,16 +30,18 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     if (addr > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      SerialInterface.println("Adresse non valide");
+      Serial.println("Adresse non valide");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
-
-    SerialInterface.print("Demande de lecture de ");
-    SerialInterface.print(wrds);
-    SerialInterface.print(" mots à partir de l'adresse ");
-    SerialInterface.println(addr);
-
+    if (MODBUS_READING_DEBUG)
+    {
+      Serial.print(millis());
+      Serial.print(" : Demande de lecture de ");
+      Serial.print(wrds);
+      Serial.print(" mots à partir de l'adresse ");
+      Serial.println(addr);
+    }
     // Modbus address is 1..n, memory address 0..n-1
     addr--;
     // address valid?
@@ -47,7 +49,7 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      SerialInterface.println("Adresse non valide (depassement)");
+      Serial.println("Adresse non valide (depassement)");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
@@ -55,20 +57,25 @@ MBSworker ModbusSlave::readHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTER
     // Prepare response
     response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(wrds * 2));
 
-    SerialInterface.println("---------");
-    // Loop over all words to be sent
-    for (uint16_t i = 0; i < wrds; i++)
-    {
-      uint16_t val = reg[addr + i];
-      // Add word MSB-first to response buffer
-      SerialInterface.print(addr + 400001 + i);
-      SerialInterface.print(" -> ");
-      SerialInterface.println(val);
+    if (MODBUS_READING_DEBUG)
+      Serial.println("---------");
+      // Loop over all words to be sent
+      for (uint16_t i = 0; i < wrds; i++)
+      {
+        uint16_t val = reg[addr + i];
+        // Add word MSB-first to response buffer
+         if (MODBUS_READING_DEBUG){
 
-      response.add(val);
-    }
-    SerialInterface.println("---------");
+        Serial.print(addr + 400001 + i);
+        Serial.print(" -> ");
+        Serial.println(val);
+         }
 
+        response.add(val);
+      }
+      if (MODBUS_READING_DEBUG)
+      Serial.println("---------");
+    
     // Return the data response
     return response;
   };
@@ -81,8 +88,8 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
 
   std ::function<ModbusMessage(ModbusMessage)> f10 = [reg](ModbusMessage request) -> ModbusMessage
   {
-    uint16_t addr = MODBUS_HOLDING_REGISTER_SIZE + 1; // Start address to read
-    uint16_t wrds = 0;                                // Number of words to read
+    uint16_t addr = MODBUS_HOLDING_REGISTER_SIZE + 1; // Start address to write
+    uint16_t wrds = 0;                                // Number of words to write
     uint8_t bytesCount = 0;
     std::vector<uint16_t> values;
     ModbusMessage response;
@@ -106,18 +113,22 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
     if (addr > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      SerialInterface.println("Adresse non valide");
+      Serial.println("Adresse non valide");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
 
-    SerialInterface.print("Demande d'ecriture de ");
-    SerialInterface.print(wrds);
-    SerialInterface.print(" mots à partir de l'adresse ");
-    SerialInterface.print(addr);
-    SerialInterface.print(" (");
-    SerialInterface.print(bytesCount);
-    SerialInterface.println(" bytes)");
+    if (MODBUS_WRITING_DEBUG)
+    {
+
+      Serial.print("Demande d'ecriture de ");
+      Serial.print(wrds);
+      Serial.print(" mots à partir de l'adresse ");
+      Serial.print(addr);
+      Serial.print(" (");
+      Serial.print(bytesCount);
+      Serial.println(" bytes)");
+    }
 
     // Modbus address is 1..n, memory address 0..n-1
     addr--;
@@ -126,32 +137,33 @@ MBSworker ModbusSlave::writeHoldingRegister(uint16_t(reg)[MODBUS_HOLDING_REGISTE
     if (!wrds || (addr + wrds) > MODBUS_HOLDING_REGISTER_SIZE)
     {
       // No. Return error response
-      SerialInterface.println("Adresse non valide (depassement)");
+      Serial.println("Adresse non valide (depassement)");
       response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
       return response;
     }
 
     // Prepare response
     // response.add(request.getServerID(), request.getFunctionCode());
-
-    SerialInterface.println("++++++++++");
-    // Loop over all words to be sent
-    for (uint16_t i = 0; i < wrds; i++)
+    if (MODBUS_WRITING_DEBUG)
     {
-      uint16_t val = reg[addr + i];
-      // Add word MSB-first to response buffer
-      SerialInterface.print(addr + 1 + i);
-      SerialInterface.print(" <- ");
-      SerialInterface.print(values[i]);
-      SerialInterface.print(" (");
-      SerialInterface.print(val);
-      SerialInterface.println(")");
+      Serial.println("++++++++++");
+      // Loop over all words to be sent
+      for (uint16_t i = 0; i < wrds; i++)
+      {
+        uint16_t val = reg[addr + i];
+        // Add word MSB-first to response buffer
+        Serial.print(addr + 1 + i);
+        Serial.print(" <- ");
+        Serial.print(values[i]);
+        Serial.print(" (");
+        Serial.print(val);
+        Serial.println(")");
 
-      reg[addr + i] = values[i];
+        reg[addr + i] = values[i];
+      }
+
+      Serial.println("++++++++");
     }
-
-    SerialInterface.println("++++++++");
-
     response = ECHO_RESPONSE;
     //  response.add(request.getServerID(), request.getFunctionCode(), addr+1, wrds);
     // Return the data response
@@ -193,6 +205,18 @@ void ModbusSlave::run()
 
     watchDog = millis();
   }
+
+  bool changed = false;
+  for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; ++i)
+  {
+    if (_previousHoldingRegister[i] != _holdingRegister[i])
+    {
+
+      _onChange(i + 1, _holdingRegister[i]);
+      changed = true;
+    }
+    _previousHoldingRegister[i] = _holdingRegister[i];
+  }
 }
 
 /**
@@ -202,8 +226,8 @@ void ModbusSlave::run()
 void ModbusSlave::printStats()
 {
 
-  SerialInterface.print(_MBserver.activeClients());
-  SerialInterface.println(" clients running.");
+  Serial.print(_MBserver.activeClients());
+  Serial.println(" clients running.");
 }
 
 /**
@@ -216,6 +240,7 @@ void ModbusSlave::clearHoldingRegister()
   for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; ++i)
   {
     _holdingRegister[i] = 0;
+    _previousHoldingRegister[i] = 0;
   }
 }
 
@@ -225,29 +250,30 @@ void ModbusSlave::clearHoldingRegister()
  */
 void ModbusSlave::printHoldingRegisterInfo()
 {
-  SerialInterface.println("==========");
+  Serial.println("==========");
 
   for (uint16_t i = 0; i < MODBUS_HOLDING_REGISTER_SIZE; i++)
   {
     // Add word MSB-first to response buffer
-    SerialInterface.print(400001 + i);
-    SerialInterface.print(" -> ");
-    SerialInterface.println(_holdingRegister[i]);
+    Serial.print(400001 + i);
+    Serial.print(" -> ");
+    Serial.print(_holdingRegister[i]);
+    Serial.print('\n');
   }
-  SerialInterface.println("==========");
+  Serial.println("==========");
 }
 
 /**
- * @brief Enregistre une fonction à executer lorsque qu'un message est reçu.
+ * @brief Enregistre une fonction à executer lorsque qu'une valeur change dans le registre.
  *
  * Si cette fonction est appelée plusieurs fois, seule la dernière fonction est enregistrée.
  * @param callback Pointeur sur la fonction à exectuer
- * Celle-ci doit etre de type (String destinataire, String text)
+ * Celle-ci doit etre de type (int index, int valeur)
  *
  */
-void ModbusSlave::registerMessageWorker(MessageCb callback)
+void ModbusSlave::onChange(ModbusCb callback)
 {
-  _messageWorker = callback;
+  _onChange = callback;
 }
 
 /**
@@ -261,15 +287,9 @@ void ModbusSlave::setHoldingRegister(uint16_t idx, uint16_t value)
   if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
   {
     _holdingRegister[idx - 1] = value;
-    if (MODBUS_DEBUG)
-    {
-      SerialInterface.println("Demande d'écriture");
-      printHoldingRegisterInfo();
-    }
   }
   else
-    SerialInterface.println("Depassement d'index de registre (Demande d'écriture)");
-
+    Serial.println("Depassement d'index de registre (Demande d'écriture)");
 }
 
 /**
@@ -283,7 +303,7 @@ uint16_t ModbusSlave::getHoldingRegister(uint16_t idx)
   if (idx > 0 && idx <= MODBUS_HOLDING_REGISTER_SIZE)
     return _holdingRegister[idx - 1];
   else
-    SerialInterface.println("Depassement d'index de registre (Demande de lecture)");
+    Serial.println("Depassement d'index de registre (Demande de lecture)");
 
   return 0;
 }
@@ -306,11 +326,11 @@ String ModbusSlave::toString(int firstRegister, int size)
     uint8_t lastByte = (value & 0xFF);         // extract first byte
     uint8_t firstByte = ((value >> 8) & 0xFF); // extract second byte
                                                /*
-    SerialInterface.print('[');
-    SerialInterface.print(firstByte, HEX);
-    SerialInterface.print('/');
-    SerialInterface.print(lastByte, HEX);
-    SerialInterface.println(']');
+    Serial.print('[');
+    Serial.print(firstByte, HEX);
+    Serial.print('/');
+    Serial.print(lastByte, HEX);
+    Serial.println(']');
     */
     if (firstByte)
       msg += char(firstByte);

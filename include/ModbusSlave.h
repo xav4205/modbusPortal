@@ -3,8 +3,9 @@
 #include <Arduino.h>
 #include "ModbusServerWiFi.h"
 #include "config.h"
+#include "Relay.h"
 
-using MessageCb = std::function<void(const String &recipient, const String &text)>;
+using ModbusCb = std::function<void(const int idx, const int value)>;
 
 class ModbusSlave
 {
@@ -14,7 +15,7 @@ public:
   void run();
   void init();
 
-  void registerMessageWorker(MessageCb callback);
+  void onChange(ModbusCb callback);
   void setHoldingRegister(uint16_t idx, uint16_t value);
   uint16_t getHoldingRegister(uint16_t idx);
   void printHoldingRegisterInfo();
@@ -23,9 +24,9 @@ public:
 private:
   // Set up a Modbus server
   ModbusServerWiFi _MBserver;
-  uint16_t _holdingRegister[MODBUS_HOLDING_REGISTER_SIZE]; // Test server memory
-
-  MessageCb _messageWorker;
+  uint16_t _holdingRegister[MODBUS_HOLDING_REGISTER_SIZE];         // Test server memory
+  uint16_t _previousHoldingRegister[MODBUS_HOLDING_REGISTER_SIZE]; // Test server memory
+  ModbusCb _onChange;
 
   void clearHoldingRegister();
 
