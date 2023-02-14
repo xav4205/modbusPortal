@@ -3,13 +3,14 @@
 
 //=======Pin config===========
 
-#define OUTPUT_1_PIN 25
+#define OUTPUT_1_PIN 16
 #define OUTPUT_2_PIN 26
 #define INPUT_1_PIN 33
 #define INPUT_2_PIN 32
 
 /*=======Main config===========*/
 #define WATCHDOG_TIMER 10000
+#define WIFI_RESTART 10
 #define MODBUS_LINK_TIMER 5000
 #define WEB_SERIAL 1
 #define MODBUS_READING_DEBUG 1
