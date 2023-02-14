@@ -20,7 +20,7 @@ Relay relay2(OUTPUT_2_PIN);
 
 ModbusSlave modbus;
 
-Portal portal(&relay1,INPUT_1_PIN);
+Portal portal(&relay1, INPUT_1_PIN);
 
 // Surveille les entrées du WebSerial
 void recvMsg(uint8_t *data, size_t len)
@@ -168,6 +168,8 @@ void loop()
   // Lie les stats du module SIM800 et les integrent au registre Modbus correspondant
   // Préleve les infos du Wifi et les stocke dans le registre d'éxecution
   static unsigned long watchDog = millis();
+  static unsigned int wifiCounter = 0;
+
   if (millis() - watchDog >= WATCHDOG_TIMER)
   {
     watchDog = millis();
@@ -176,7 +178,33 @@ void loop()
     if (WiFi.status() == WL_CONNECTED)
     {
       modbus.setHoldingRegister(MODMAP_WIFI_SIGNAL_LEVEL, -WiFi.RSSI());
+      wifiCounter = 0;
     }
+    else
+    {
+      wifiCounter++;
+
+      Wifi.disconnect();
+      delay(1000);
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      delay(200);
+
+      uint restartTimer = 60;
+      while (WiFi.status() != WL_CONNECTED)
+      {
+        Serial.print('.');
+        delay(1000);
+        if (restartTimer <= 0)
+          ESP.restart();
+        restartTimer--;
+      }
+    }
+
+    if (wifiCounter > WIFI_RESTART)
+    {
+      ESP.restart()
+    }
+
     modbus.setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());
 
     // == MODBUS SerialInterface ==
