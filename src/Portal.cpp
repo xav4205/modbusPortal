@@ -60,12 +60,14 @@ void Portal::run()
   else
     _openTimer = millis();
 
-  if (millis() - _closeTimer >= 4000)
+  if (millis() - _closeTimer >= PORTAL_SENSOR_DEBOUNCE)
   {
     _state = PortalState::CLOSED;
   }
-
-  if (millis() - _openTimer >= 30000 && _state == PortalState::OPEN_PROCESS)
+  else if (_state == PortalState::CLOSED)
+    _state = PortalState::OPEN_PROCESS;
+  
+  if (millis() - _openTimer >= PORTAL_OPEN_TIME && _state == PortalState::OPEN_PROCESS)
     _state = PortalState::OPENED;
 
   _previousState = _state;

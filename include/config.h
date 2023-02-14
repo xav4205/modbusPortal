@@ -15,6 +15,8 @@
 #define MODBUS_READING_DEBUG 1
 #define MODBUS_WRITING_DEBUG 1
 #define RELAY_PULSE_TIME 1000
+#define PORTAL_SENSOR_DEBOUNCE 4000
+#define PORTAL_OPEN_TIME 50000
 
 /*===== Wifi Settings ======*/
 // NE RIEN MODIFIER ICI MAIS DANS platformio.ini
