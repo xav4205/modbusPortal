@@ -2,8 +2,9 @@
 #define SERIALINTERFACE_H
 
 #include <Arduino.h>
+#include <MycilaWebSerial.h>
 #include <ESPAsyncWebServer.h>
-#include <WebSerial.h>
+#include <AsyncTCP.h>
 
 class SerialInterfaceClass
 {
@@ -12,7 +13,7 @@ public:
   void enableWebSerial(bool activate = true);
 
   // Register callback function when data is received
-  void msgCallback(RecvMsgHandler _recv);
+  void msgCallback(WSLMessageHandler recv);
   // Print
 
   void print(String m);

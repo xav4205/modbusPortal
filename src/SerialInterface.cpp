@@ -1,6 +1,7 @@
 #include <Arduino.h>
+#include <MycilaWebSerial.h>
 #include <ESPAsyncWebServer.h>
-#include <WebSerial.h>
+#include <AsyncTCP.h>
 
 #include "SerialInterface.h"
 
@@ -26,9 +27,9 @@ void SerialInterfaceClass::enableWebSerial(bool activate)
   _webOn = activate;
 }
 
-void SerialInterfaceClass::msgCallback(RecvMsgHandler msg)
+void SerialInterfaceClass::msgCallback(WSLMessageHandler recv)
 {
-  WebSerial.msgCallback(msg);
+  WebSerial.onMessage(recv);
 }
 
 // Print

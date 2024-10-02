@@ -184,7 +184,7 @@ void loop()
     {
       wifiCounter++;
 
-      Wifi.disconnect();
+      WiFi.disconnect();
       delay(1000);
       WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
       delay(200);
@@ -202,7 +202,7 @@ void loop()
 
     if (wifiCounter > WIFI_RESTART)
     {
-      ESP.restart()
+      ESP.restart();
     }
 
     modbus.setHoldingRegister(MODMAP_WIFI_STATUS, WiFi.status());

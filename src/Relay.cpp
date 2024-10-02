@@ -1,5 +1,4 @@
 #include <Arduino.h>
-
 #include "Relay.h"
 #include "config.h"
 #include "SerialInterface.h"
